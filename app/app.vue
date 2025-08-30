@@ -1,10 +1,9 @@
 <template>
-  <Layout>
+  <NuxtLayout>
     <NuxtPage />
-    <Header>Ini Home</Header>
-  </Layout>
+  </NuxtLayout>
 </template>
+
 <script setup>
-import Header from "../components/Header.vue";
-import Layout from "../layouts/Layout.vue";
+import NuxtLayout from "../layouts/Layout.vue";
 </script>
