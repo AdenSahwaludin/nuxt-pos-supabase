@@ -1,0 +1,1243 @@
+# Nuxt POS System with Supabase (SBS)
+## Technical Specification & Implementation Guide
+
+> **Architecture:** Client-Side Rendering (CSR) only  
+> **Framework:** Nuxt 3  
+> **Database:** Supabase (PostgreSQL + Row Level Security)  
+> **Schema:** `sbs`  
+> **User Roles:** `admin` & `kasir` (cashier)
+
+---
+
+## Table of Contents
+1. [Environment Configuration](#environment-configuration)
+2. [Nuxt 3 Project Setup](#nuxt-3-project-setup)
+3. [Database Schema Design](#database-schema-design)
+4. [ID Generation System](#id-generation-system)
+5. [POS Workflow](#pos-workflow)
+6. [User Role Management](#user-role-management)
+7. [UI Components](#ui-components)
+8. [Implementation Examples](#implementation-examples)
+9. [Data Seeding](#data-seeding)
+10. [Acceptance Criteria](#acceptance-criteria)
+11. [Performance Guidelines](#performance-guidelines)
+12. [Future Enhancements](#future-enhancements)
+
+---
+
+## Environment Configuration
+
+### Required Environment Variables
+
+```env
+SUPABASE_URL=https://mjxhddjoaoekdlhnqbhy.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qeGhkZGpvYW9la2RsaG5xYmh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNTgxMTQsImV4cCI6MjA2OTczNDExNH0.XyPUtr2KgiZwMqbz_2hS0e-UTVqhS-ucZedo0pT9Qss
+```
+
+> **Security Note:** These are client-side public keys. For server-side privileged operations, use the Service Role key (server-side only). This project runs in CSR mode, so avoid exposing sensitive secrets to the client.
+
+## Nuxt 3 Project Setup
+
+### Core Configuration
+
+**nuxt.config.ts**
+
+```typescript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  ssr: false, // Client-side rendering only
+  devtools: { enabled: true },
+  modules: [
+    '@nuxt/ui',
+    '@nuxt/image',
+    '@nuxt/eslint',
+    '@nuxt/scripts'
+  ],
+  runtimeConfig: {
+    public: {
+      supabaseUrl: process.env.SUPABASE_URL,
+      supabaseAnonKey: process.env.SUPABASE_KEY
+    }
+  },
+  typescript: { strict: true },
+  app: { 
+    pageTransition: { name: 'page', mode: 'out-in' } 
+  }
+})
+```
+
+### Supabase Client Configuration
+
+**~/lib/supabaseClient.ts**
+
+```typescript
+import { createClient } from '@supabase/supabase-js'
+
+const config = useRuntimeConfig()
+
+export const supabase = createClient(
+  config.public.supabaseUrl!,
+  config.public.supabaseAnonKey!,
+  { 
+    auth: { 
+      persistSession: true, 
+      autoRefreshToken: true, 
+      detectSessionInUrl: true 
+    } 
+  }
+)
+```
+
+### State Management (Pinia)
+
+**~/stores/auth.ts**
+
+```typescript
+import { defineStore } from 'pinia'
+import { supabase } from '~/lib/supabaseClient'
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({ 
+    user: null as any, 
+    profile: null as any 
+  }),
+  
+  actions: {
+    async signIn(email: string, password: string) {
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      })
+      if (error) throw error
+      
+      this.user = data.user
+      await this.loadProfile()
+    },
+    
+    async signOut() {
+      await supabase.auth.signOut()
+      this.user = null
+      this.profile = null
+    },
+    
+    async loadProfile() {
+      const uid = (await supabase.auth.getUser()).data.user?.id
+      if (!uid) return
+      
+      const { data } = await supabase
+        .from('sbs_pengguna_view')
+        .select('*')
+        .single()
+      this.profile = data
+    }
+  }
+})
+```
+
+### Authentication Middleware
+
+**~/middleware/auth.global.ts**
+
+```typescript
+export default defineNuxtRouteMiddleware((to) => {
+  const auth = useAuthStore()
+  const publicRoutes = ['/login']
+  
+  if (!auth.user && !publicRoutes.includes(to.path)) {
+    return navigateTo('/login')
+  }
+})
+```
+
+**~/middleware/role.ts**
+
+```typescript
+export default defineNuxtRouteMiddleware((to) => {
+  const auth = useAuthStore()
+  const needAdmin = to.meta?.role === 'admin'
+  
+  if (needAdmin && auth.profile?.role !== 'admin') {
+    return navigateTo('/forbidden')
+  }
+})
+```
+
+### Layout Components
+
+**~/layouts/admin.vue**
+
+```vue
+<template>
+  <div class="min-h-screen grid grid-rows-[auto,1fr]">
+    <header class="p-4 border-b flex items-center justify-between">
+      <div class="font-bold">SBS Admin Dashboard</div>
+      <div>
+        <UButton @click="logout" variant="outline">
+          Logout
+        </UButton>
+      </div>
+    </header>
+    <main class="p-4">
+      <slot />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
+
+const auth = useAuthStore()
+const logout = () => auth.signOut()
+</script>
+```
+
+**~/layouts/kasir.vue**
+
+```vue
+<template>
+  <div class="min-h-screen">
+    <header class="p-3 border-b flex items-center gap-3">
+      <div class="font-semibold">SBS Cashier</div>
+      <UButton to="/pos" size="sm" color="primary">
+        Mulai Transaksi
+      </UButton>
+      <div class="ml-auto">
+        <UButton @click="logout" size="sm" variant="outline">
+          Logout
+        </UButton>
+      </div>
+    </header>
+    <main class="p-4 max-w-6xl mx-auto">
+      <slot />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
+
+const auth = useAuthStore()
+const logout = () => auth.signOut()
+</script>
+```
+
+### Page Structure
+
+```
+pages/
+├── login.vue                    # Email/password authentication form
+├── dashboard/
+│   └── index.vue               # Role detection → redirect to /admin or /kasir
+├── admin/
+│   └── index.vue               # Admin dashboard (layout: admin, meta: { role: 'admin' })
+├── kasir/
+│   └── index.vue               # Cashier dashboard (layout: kasir)
+├── pos/
+│   └── index.vue               # POS interface: cart, scan, payment options
+└── forbidden.vue               # Access denied page
+```
+
+## Database Schema Design
+
+### Overview
+
+The database schema follows a comprehensive design pattern for a Point of Sale system with credit/installment capabilities. All tables include proper indexing, timestamps, and Row Level Security (RLS) for data protection.
+
+**Key Features:**
+- Customer ID format: `P001` to `P999` (3-digit incremental)
+- Transaction ID format: `INV-YYYY-MM-SEQ-PELANGGAN`
+- Payment ID format: `PAY-YYYYMMDD-SEQ`
+- Accounts Receivable ID format: `AR-YYYYMM-SEQ`
+- Legacy password field (nullable) - authentication handled by Supabase Auth
+
+### Schema Initialization
+
+```sql
+CREATE SCHEMA IF NOT EXISTS sbs;
+SET search_path TO sbs, public;
+```
+
+### Enum Types
+
+```sql
+-- User role definitions
+CREATE TYPE sbs.user_role AS ENUM ('admin','kasir');
+
+-- Transaction status tracking
+CREATE TYPE sbs.trx_status AS ENUM ('menunggu','selesai','dibatalkan');
+
+-- Payment method types
+CREATE TYPE sbs.pay_method AS ENUM ('tunai','non_tunai');
+
+-- Accounts receivable status
+CREATE TYPE sbs.ar_status AS ENUM ('aktif','lunas','tunggakan','gagal');
+
+-- Communication channels for reminders
+CREATE TYPE sbs.reminder_channel AS ENUM ('wa','sms','telp','email','lainnya');
+
+-- Binary status indicator
+CREATE TYPE sbs.yesno AS ENUM ('Y','N');
+```
+
+### Core Business Tables
+
+#### 1. User Management
+
+```sql
+-- User profiles (business staff)
+CREATE TABLE IF NOT EXISTS sbs.pengguna (
+  id_pengguna CHAR(7) PRIMARY KEY,                             -- Format: 001-ADN
+  nama VARCHAR(100) NOT NULL,
+  email VARCHAR(50) UNIQUE,
+  telepon VARCHAR(20),
+  kata_sandi CHAR(60),                                         -- Legacy field (bcrypt), NOT used for auth
+  role sbs.user_role NOT NULL DEFAULT 'kasir',
+  terakhir_login TIMESTAMPTZ,
+  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE, -- Maps to Supabase Auth
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT ck_id_pengguna_format CHECK (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$')
+);
+```
+
+#### 2. Customer Management
+
+```sql
+-- Customer records (ID: P001..P999)
+CREATE TABLE IF NOT EXISTS sbs.pelanggan (
+  id_pelanggan VARCHAR(4) PRIMARY KEY,                         -- Format: P001
+  nama VARCHAR(100) NOT NULL,
+  email VARCHAR(50) UNIQUE,
+  telepon VARCHAR(20),
+  kota VARCHAR(50),
+  alamat TEXT,
+  status sbs.yesno NOT NULL DEFAULT 'Y',                       -- Active/Inactive
+  tanggal_daftar DATE DEFAULT CURRENT_DATE,
+  allow_installment BOOLEAN NOT NULL DEFAULT false,
+  credit_limit NUMERIC(12,2) NOT NULL DEFAULT 0,
+  max_tenor_bulan SMALLINT NOT NULL DEFAULT 0,
+  trust_score NUMERIC(5,2) NOT NULL DEFAULT 0,                 -- Score: 0..100
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT ck_id_pelanggan_format CHECK (id_pelanggan ~ '^P[0-9]{3}$')
+);
+```
+
+#### 3. Product Catalog
+
+```sql
+-- Product categories
+CREATE TABLE IF NOT EXISTS sbs.kategori (
+  id_kategori SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nama VARCHAR(100) NOT NULL
+);
+
+-- Product master data
+CREATE TABLE IF NOT EXISTS sbs.produk (
+  id_produk CHAR(13) PRIMARY KEY,                              -- EAN-13 barcode
+  id_kategori SMALLINT NOT NULL REFERENCES sbs.kategori(id_kategori),
+  nama VARCHAR(100) NOT NULL,
+  gambar VARCHAR(255),
+  nomor_bpom VARCHAR(50),
+  harga NUMERIC(12,2) NOT NULL CHECK (harga >= 0),
+  biaya_produk NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (biaya_produk >= 0),
+  stok INTEGER NOT NULL DEFAULT 0,
+  batas_stok INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_produk_kategori ON sbs.produk(id_kategori);
+```
+
+#### 4. Transaction Management
+
+```sql
+-- Transaction headers (credit-aware)
+CREATE TABLE IF NOT EXISTS sbs.transaksi (
+  id_transaksi VARCHAR(28) PRIMARY KEY,                        -- Format: INV-2025-05-001-P001
+  id_pengguna CHAR(7) NOT NULL REFERENCES sbs.pengguna(id_pengguna),
+  id_pelanggan VARCHAR(4) NOT NULL REFERENCES sbs.pelanggan(id_pelanggan),
+  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  total NUMERIC(12,2) NOT NULL CHECK (total >= 0),
+  status sbs.trx_status NOT NULL DEFAULT 'menunggu',
+  catatan TEXT,
+  diskon NUMERIC(12,2) CHECK (diskon IS NULL OR diskon >= 0),
+  pajak NUMERIC(12,2) CHECK (pajak IS NULL OR pajak >= 0),
+  biaya_pengiriman NUMERIC(12,2) DEFAULT 0 CHECK (biaya_pengiriman >= 0),
+
+  -- Credit transaction fields
+  tipe_pembayaran sbs.pay_method,
+  is_credit BOOLEAN NOT NULL DEFAULT false,
+  dp_amount NUMERIC(12,2) DEFAULT 0 CHECK (dp_amount >= 0),
+  due_date DATE,
+  outstanding NUMERIC(12,2) DEFAULT 0 CHECK (outstanding >= 0),
+  ar_status sbs.ar_status,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON sbs.transaksi(tanggal);
+CREATE INDEX IF NOT EXISTS idx_transaksi_pelanggan ON sbs.transaksi(id_pelanggan);
+
+-- Transaction line items
+CREATE TABLE IF NOT EXISTS sbs.transaksi_detail (
+  id_detail BIGSERIAL PRIMARY KEY,
+  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi) ON DELETE CASCADE,
+  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
+  jumlah INTEGER NOT NULL CHECK (jumlah > 0),
+  harga_satuan NUMERIC(12,2) NOT NULL CHECK (harga_satuan >= 0),
+  subtotal GENERATED ALWAYS AS (jumlah * harga_satuan) STORED
+);
+
+CREATE INDEX IF NOT EXISTS idx_trx_detail_trx ON sbs.transaksi_detail(id_transaksi);
+CREATE INDEX IF NOT EXISTS idx_trx_detail_produk ON sbs.transaksi_detail(id_produk);
+```
+
+### Accounts Receivable (Credit System)
+
+```sql
+-- Accounts receivable header (1:1 with credit transactions)
+CREATE TABLE IF NOT EXISTS sbs.piutang (
+  id_piutang VARCHAR(30) PRIMARY KEY,                          -- Format: AR-202508-001
+  id_transaksi VARCHAR(28) NOT NULL UNIQUE REFERENCES sbs.transaksi(id_transaksi) ON DELETE CASCADE,
+  id_pelanggan VARCHAR(4) NOT NULL REFERENCES sbs.pelanggan(id_pelanggan),
+  tenor_bulan SMALLINT NOT NULL CHECK (tenor_bulan > 0),
+  dp_amount NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (dp_amount >= 0),
+  principal NUMERIC(12,2) NOT NULL CHECK (principal >= 0),     -- Principal amount after down payment
+  bunga_persen NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (bunga_persen >= 0),
+  total_tagihan NUMERIC(12,2) NOT NULL CHECK (total_tagihan >= 0),
+  outstanding NUMERIC(12,2) NOT NULL CHECK (outstanding >= 0),
+  start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  end_date DATE,
+  status sbs.ar_status NOT NULL DEFAULT 'aktif',
+  approved_by CHAR(7) REFERENCES sbs.pengguna(id_pengguna),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_piutang_pelanggan ON sbs.piutang(id_pelanggan);
+CREATE INDEX IF NOT EXISTS idx_piutang_status ON sbs.piutang(status);
+
+-- Installment schedule (N:1 relationship)
+CREATE TABLE IF NOT EXISTS sbs.piutang_jadwal (
+  id_jadwal BIGSERIAL PRIMARY KEY,
+  id_piutang VARCHAR(30) NOT NULL REFERENCES sbs.piutang(id_piutang) ON DELETE CASCADE,
+  termin_ke SMALLINT NOT NULL,
+  due_date DATE NOT NULL,
+  amount_due NUMERIC(12,2) NOT NULL CHECK (amount_due > 0),
+  amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+  paid_date TIMESTAMPTZ,
+  denda NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (denda >= 0),
+  status sbs.ar_status NOT NULL DEFAULT 'aktif',
+  UNIQUE (id_piutang, termin_ke)
+);
+
+CREATE INDEX IF NOT EXISTS idx_jadwal_due ON sbs.piutang_jadwal(due_date, status);
+```
+
+### Payment Processing
+
+```sql
+-- Payment transactions (synchronized with installments)
+CREATE TABLE IF NOT EXISTS sbs.pembayaran (
+  id_pembayaran CHAR(20) PRIMARY KEY,                          -- Format: PAY-YYYYMMDD-001
+  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi),
+  metode sbs.pay_method NOT NULL,
+  jumlah NUMERIC(12,2) NOT NULL CHECK (jumlah > 0),
+  keterangan VARCHAR(255),
+  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Allocation to receivables/installments (nullable for cash payments)
+  id_piutang VARCHAR(30) REFERENCES sbs.piutang(id_piutang),
+  id_jadwal BIGINT REFERENCES sbs.piutang_jadwal(id_jadwal)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pembayaran_trx ON sbs.pembayaran(id_transaksi);
+CREATE INDEX IF NOT EXISTS idx_pembayaran_piutang ON sbs.pembayaran(id_piutang);
+CREATE INDEX IF NOT EXISTS idx_pembayaran_tanggal ON sbs.pembayaran(tanggal);
+```
+
+### Credit Eligibility & Business Rules
+
+```sql
+-- Global installment policy rules
+CREATE TABLE IF NOT EXISTS sbs.kebijakan_cicilan (
+  id_kebijakan SMALLSERIAL PRIMARY KEY,
+  min_member_days INTEGER NOT NULL DEFAULT 30,
+  min_total_belanja_3bln NUMERIC(12,2) NOT NULL DEFAULT 0,
+  min_freq_transaksi_3bln INTEGER NOT NULL DEFAULT 0,
+  max_tunggakan_hari INTEGER NOT NULL DEFAULT 0,
+  min_trust_score NUMERIC(5,2) NOT NULL DEFAULT 70.0,
+  min_dp_persen NUMERIC(5,2) NOT NULL DEFAULT 20.0,
+  max_tenor_bulan SMALLINT NOT NULL DEFAULT 6,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Customer-specific policy overrides (whitelist/blacklist)
+CREATE TABLE IF NOT EXISTS sbs.kebijakan_cicilan_per_pelanggan (
+  id_pelanggan VARCHAR(4) PRIMARY KEY REFERENCES sbs.pelanggan(id_pelanggan) ON DELETE CASCADE,
+  allow_installment BOOLEAN,
+  credit_limit NUMERIC(12,2) CHECK (credit_limit IS NULL OR credit_limit >= 0),
+  max_tenor_bulan SMALLINT,
+  min_dp_persen NUMERIC(5,2) CHECK (min_dp_persen IS NULL OR min_dp_persen >= 0),
+  notes TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Customer metrics snapshot (for daily/weekly scoring)
+CREATE TABLE IF NOT EXISTS sbs.pelanggan_metric_snapshot (
+  id_pelanggan VARCHAR(4) REFERENCES sbs.pelanggan(id_pelanggan) ON DELETE CASCADE,
+  snapshot_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  total_belanja_3bln NUMERIC(12,2) NOT NULL DEFAULT 0,
+  freq_transaksi_3bln INTEGER NOT NULL DEFAULT 0,
+  ontime_payment_rate NUMERIC(5,2) NOT NULL DEFAULT 100.0,    -- Percentage
+  avg_basket NUMERIC(12,2) NOT NULL DEFAULT 0,
+  last_trx_at TIMESTAMPTZ,
+  tunggakan_hari INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (id_pelanggan, snapshot_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pelanggan_metric_recent 
+ON sbs.pelanggan_metric_snapshot(id_pelanggan, snapshot_date DESC);
+```
+
+### Optional Enhancement Tables
+
+```sql
+-- Inventory movement ledger
+CREATE TABLE IF NOT EXISTS sbs.stok_mutasi (
+  id_mutasi BIGSERIAL PRIMARY KEY,
+  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
+  waktu TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  tipe VARCHAR(20) NOT NULL,            -- 'penjualan','restock','retur','adjust'
+  qty INTEGER NOT NULL,
+  referensi VARCHAR(50),                -- Transaction ID or other reference
+  keterangan TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_stok_mutasi_produk ON sbs.stok_mutasi(id_produk);
+CREATE INDEX IF NOT EXISTS idx_stok_mutasi_waktu ON sbs.stok_mutasi(waktu);
+
+-- Tiered pricing rules
+CREATE TABLE IF NOT EXISTS sbs.harga_aturan (
+  id_harga BIGSERIAL PRIMARY KEY,
+  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
+  min_qty INTEGER NOT NULL DEFAULT 1 CHECK (min_qty > 0),
+  harga_satuan NUMERIC(12,2) NOT NULL CHECK (harga_satuan >= 0),
+  catatan VARCHAR(120)
+);
+
+CREATE INDEX IF NOT EXISTS idx_harga_aturan_produk ON sbs.harga_aturan(id_produk);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_harga_tier ON sbs.harga_aturan(id_produk, min_qty);
+
+-- Collection activity log (dunning)
+CREATE TABLE IF NOT EXISTS sbs.penagihan_log (
+  id_log BIGSERIAL PRIMARY KEY,
+  id_piutang VARCHAR(30) NOT NULL REFERENCES sbs.piutang(id_piutang) ON DELETE CASCADE,
+  id_jadwal BIGINT REFERENCES sbs.piutang_jadwal(id_jadwal) ON DELETE SET NULL,
+  channel sbs.reminder_channel NOT NULL,
+  waktu TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  hasil TEXT,
+  petugas CHAR(7) REFERENCES sbs.pengguna(id_pengguna)
+);
+
+CREATE INDEX IF NOT EXISTS idx_penagihan_piutang ON sbs.penagihan_log(id_piutang);
+```
+
+### Row Level Security (RLS) Implementation
+
+```sql
+-- Enable RLS on all tables
+ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pelanggan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.kategori ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.produk ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.transaksi ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.transaksi_detail ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pembayaran ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.piutang ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.piutang_jadwal ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.kebijakan_cicilan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.kebijakan_cicilan_per_pelanggan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pelanggan_metric_snapshot ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.stok_mutasi ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.harga_aturan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.penagihan_log ENABLE ROW LEVEL SECURITY;
+
+-- Helper view for authenticated users
+CREATE OR REPLACE VIEW sbs_pengguna_view AS
+SELECT p.* FROM sbs.pengguna p WHERE p.user_id = auth.uid();
+
+-- Read policies (basic authentication required)
+CREATE POLICY sbs_read_all_pengguna ON sbs.pengguna
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_basic ON sbs.pelanggan 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_kategori ON sbs.kategori 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_produk ON sbs.produk 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_transaksi ON sbs.transaksi 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_detail ON sbs.transaksi_detail 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_pembayaran ON sbs.pembayaran 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_piutang ON sbs.piutang 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY sbs_read_all_jadwal ON sbs.piutang_jadwal 
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Write policies (role-based restrictions)
+CREATE POLICY sbs_write_admin_produk ON sbs.produk
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Cashier permissions for transactions and payments
+CREATE POLICY sbs_kasir_insert_transaksi ON sbs.transaksi
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
+    )
+  );
+
+CREATE POLICY sbs_kasir_insert_pembayaran ON sbs.pembayaran
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
+    )
+  );
+```
+
+## ID Generation System
+
+### Client-Side ID Generators
+
+These lightweight functions generate consistent IDs on the client side. For production use, consider implementing server-side RPC functions for atomic sequence generation.
+
+#### Customer ID Generator
+
+```typescript
+/**
+ * Generate next customer ID in format P001-P999
+ * @param last - Last used customer ID
+ * @returns Next customer ID
+ */
+export function nextPelangganId(last: string | null): string {
+  const n = last ? parseInt(last.slice(1), 10) + 1 : 1
+  return `P${String(n).padStart(3, '0')}`
+}
+```
+
+#### Transaction ID Generator
+
+```typescript
+/**
+ * Generate transaction ID in format INV-YYYY-MM-SEQ-PELANGGAN
+ * @param seq - Sequence number for the month
+ * @param pelId - Customer ID
+ * @returns Transaction ID
+ */
+export function buildTrxId(seq: number, pelId: string): string {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const s = String(seq).padStart(3, '0')
+  return `INV-${yyyy}-${mm}-${s}-${pelId}`
+}
+```
+
+#### Payment ID Generator
+
+```typescript
+/**
+ * Generate payment ID in format PAY-YYYYMMDD-SEQ
+ * @param seq - Daily sequence number
+ * @returns Payment ID
+ */
+export function buildPayId(seq: number): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `PAY-${y}${m}${day}-${String(seq).padStart(3, '0')}`
+}
+```
+
+#### Accounts Receivable ID Generator
+
+```typescript
+/**
+ * Generate accounts receivable ID in format AR-YYYYMM-SEQ
+ * @param seq - Monthly sequence number
+ * @returns AR ID
+ */
+export function buildArId(seq: number): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `AR-${y}${m}-${String(seq).padStart(3, '0')}`
+}
+```
+
+> **Production Tip:** For cross-client consistency, implement a `seq_counter(table, scope)` table with atomic upsert via Supabase Edge Functions.
+
+## POS Workflow
+
+### Cashier Transaction Flow
+
+The POS system follows a streamlined workflow optimized for performance with pagination and lightweight operations.
+
+#### 1. Product Search & Selection
+
+- **Barcode Scan**: Query `produk` table by exact barcode match (limit 1)
+- **Name Search**: Query by product name with pagination (limit 20, debounced 250ms)
+- **Category Filter**: Optional filtering by product category
+
+#### 2. Shopping Cart Management
+
+- **State Management**: Store cart items in Pinia state (client-side)
+- **Tiered Pricing**: Query `sbs.harga_aturan` for quantity-based pricing
+- **Real-time Calculation**: Auto-calculate subtotals and totals
+
+#### 3. Checkout Process
+
+Create transaction and details in sequential batch operations:
+- Insert `transaksi` record
+- Insert multiple `transaksi_detail` records
+- For atomic consistency in production, consider implementing RPC functions
+
+#### 4. Payment Methods
+
+**Cash/Non-Cash Payments:**
+- Insert `pembayaran` record (without `id_piutang`/`id_jadwal`)
+- Update transaction status to 'selesai'
+
+**Installment Payments (Credit-Eligible Customers):**
+- Create `piutang` header record (principal = total - down payment)
+- Generate `piutang_jadwal` entries (monthly installments with due dates)
+- Insert `pembayaran` record for down payment (linked to `piutang`)
+- Calculate interest if applicable
+
+### Credit Eligibility System
+
+**Frontend Validation + Backend Verification:**
+
+1. **Customer-Specific Override**: Check `kebijakan_cicilan_per_pelanggan`
+   - Allow/deny installment capability
+   - Custom credit limits and tenor periods
+   - Minimum down payment percentage
+
+2. **Global Policy Fallback**: Use `kebijakan_cicilan` default rules
+   - Minimum membership duration
+   - Minimum 3-month purchase history
+   - Trust score requirements
+
+3. **Metric-Based Assessment**: Evaluate `pelanggan_metric_snapshot`
+   - 3-month total spending
+   - Transaction frequency
+   - On-time payment rate
+   - Current outstanding balances
+
+4. **Real-time Display**: Show eligibility status with clear rejection reasons
+   - Trust score below minimum
+   - Insufficient purchase history
+   - Existing overdue payments
+
+## User Role Management
+
+### Administrator Functions
+
+**Master Data Management:**
+- Product catalog (CRUD operations)
+- Category management
+- Customer profiles and credit settings
+
+**Credit Policy Administration:**
+- Global installment policies
+- Customer-specific overrides
+- Credit limit adjustments
+
+**Financial Monitoring:**
+- Accounts receivable dashboard
+- Installment schedule tracking
+- Aging analysis and collection reports
+
+**Operational Reports:**
+- Daily sales summaries
+- Low stock alerts
+- Performance metrics
+
+### Cashier Functions
+
+**Point of Sale Operations:**
+- Transaction processing
+- Multi-tier pricing application
+- Payment method selection (cash/credit/installment)
+
+**Customer Service:**
+- Transaction history lookup
+- Customer credit status inquiry
+- Basic account information
+
+**Personal Tracking:**
+- Individual transaction history
+- Personal performance metrics
+
+### Route Configuration Example
+
+```typescript
+// pages/admin/index.vue
+<script setup>
+definePageMeta({ 
+  layout: 'admin', 
+  middleware: ['role'], 
+  role: 'admin' 
+})
+</script>
+```
+
+## UI Components
+
+### Key POS Interface Components
+
+**ProductSearch.vue** - Product Discovery
+- Search input with debounced queries (250ms delay)
+- Virtualized product list for large catalogs
+- Pagination support (20-50 items per page)
+- Barcode scanner integration
+- Category filtering capabilities
+
+**CartTable.vue** - Shopping Cart Management
+- Responsive table layout for cart items
+- Quantity adjustment controls
+- Price tier indicators and hints
+- Subtotal calculations
+- Item removal functionality
+
+**CheckoutPanel.vue** - Payment Processing
+- Payment method selection (cash/credit/installment)
+- Down payment input for credit transactions
+- Tenor (installment period) selector
+- Transaction summary display
+- Customer eligibility status
+
+**EligibilityBadge.vue** - Credit Status Display
+- Visual credit eligibility indicator
+- Detailed reason display for rejections
+- Customer trust score visualization
+- Credit limit and available balance
+
+### Performance Optimization Guidelines
+
+**Database Query Optimization:**
+- Use specific column selection: `select('column1,column2')` instead of `select('*')`
+- Implement pagination with `.range(start, end)` for large datasets
+- Leverage existing database indexes for optimal query performance
+
+**Frontend Performance:**
+- Implement infinite scroll or pagination for large lists
+- Cache master data (categories, policies) in Pinia with periodic refresh
+- Use debounced search inputs (200-300ms delay)
+- Implement virtual scrolling for large product catalogs
+
+**Memory Management:**
+- Clear unnecessary state after transactions
+- Optimize image loading with lazy loading
+- Use efficient data structures for cart management
+
+## Implementation Examples
+
+### Credit Transaction Checkout
+
+```typescript
+// Composable: ~/composables/useCheckout.ts
+import { supabase } from '~/lib/supabaseClient'
+
+interface CreditTransactionPayload {
+  pelangganId: string
+  penggunaId: string
+  items: Array<{
+    id_produk: string
+    qty: number
+    harga: number
+  }>
+  diskon?: number
+  pajak?: number
+  biaya_pengiriman?: number
+  dp: number
+  tenor: number
+  bunga: number
+}
+
+export async function createCreditTransaction(payload: CreditTransactionPayload) {
+  try {
+    // 1. Calculate totals
+    const itemTotal = payload.items.reduce((sum, item) => 
+      sum + (item.qty * item.harga), 0
+    )
+    const total = itemTotal + (payload.pajak || 0) + (payload.biaya_pengiriman || 0) - (payload.diskon || 0)
+    
+    // 2. Generate transaction ID
+    const idTrx = buildTrxId(1, payload.pelangganId) // TODO: Get proper sequence
+    
+    // 3. Create transaction record
+    const { error: trxError } = await supabase
+      .from('sbs.transaksi')
+      .insert({
+        id_transaksi: idTrx,
+        id_pelanggan: payload.pelangganId,
+        id_pengguna: payload.penggunaId,
+        total,
+        status: 'menunggu',
+        is_credit: true,
+        dp_amount: payload.dp,
+        diskon: payload.diskon,
+        pajak: payload.pajak,
+        biaya_pengiriman: payload.biaya_pengiriman
+      })
+    
+    if (trxError) throw trxError
+
+    // 4. Insert transaction details
+    const transactionDetails = payload.items.map(item => ({
+      id_transaksi: idTrx,
+      id_produk: item.id_produk,
+      jumlah: item.qty,
+      harga_satuan: item.harga
+    }))
+
+    const { error: detailError } = await supabase
+      .from('sbs.transaksi_detail')
+      .insert(transactionDetails)
+    
+    if (detailError) throw detailError
+
+    // 5. Create accounts receivable
+    const principal = Math.max(0, total - payload.dp)
+    const totalTagihan = principal * (1 + payload.bunga / 100)
+    const idAr = buildArId(1) // TODO: Get proper sequence
+
+    const { error: arError } = await supabase
+      .from('sbs.piutang')
+      .insert({
+        id_piutang: idAr,
+        id_transaksi: idTrx,
+        id_pelanggan: payload.pelangganId,
+        tenor_bulan: payload.tenor,
+        dp_amount: payload.dp,
+        principal,
+        bunga_persen: payload.bunga,
+        total_tagihan: totalTagihan,
+        outstanding: totalTagihan
+      })
+    
+    if (arError) throw arError
+
+    // 6. Generate installment schedule
+    const monthlyPayment = +(totalTagihan / payload.tenor).toFixed(2)
+    const installmentSchedule = Array.from({ length: payload.tenor }, (_, index) => {
+      const dueDate = new Date()
+      dueDate.setMonth(dueDate.getMonth() + index + 1)
+      
+      return {
+        id_piutang: idAr,
+        termin_ke: index + 1,
+        due_date: dueDate.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        amount_due: monthlyPayment
+      }
+    })
+
+    const { error: scheduleError } = await supabase
+      .from('sbs.piutang_jadwal')
+      .insert(installmentSchedule)
+    
+    if (scheduleError) throw scheduleError
+
+    // 7. Record down payment
+    const idPay = buildPayId(1) // TODO: Get proper sequence
+    
+    const { error: paymentError } = await supabase
+      .from('sbs.pembayaran')
+      .insert({
+        id_pembayaran: idPay,
+        id_transaksi: idTrx,
+        metode: 'non_tunai',
+        jumlah: payload.dp,
+        id_piutang: idAr,
+        keterangan: 'Down payment for installment'
+      })
+    
+    if (paymentError) throw paymentError
+
+    // 8. Complete transaction
+    const { error: updateError } = await supabase
+      .from('sbs.transaksi')
+      .update({ status: 'selesai' })
+      .eq('id_transaksi', idTrx)
+    
+    if (updateError) throw updateError
+
+    return { 
+      success: true, 
+      transactionId: idTrx, 
+      arId: idAr 
+    }
+
+  } catch (error) {
+    console.error('Credit transaction failed:', error)
+    throw error
+  }
+}
+```
+
+> **Production Note:** For better atomicity and consistency, consider moving this logic to a Supabase Edge Function or RPC. The current client-side approach is suitable for MVP development but may need enhancement for production use.
+
+## Data Seeding
+
+### Initial System Setup
+
+```sql
+-- Admin user profile (manually map to auth.users.id after user creation)
+INSERT INTO sbs.pengguna (id_pengguna, nama, email, role, user_id) VALUES
+('001-ADM', 'Admin Toko', 'admin@example.com', 'admin', '00000000-0000-0000-0000-000000000000');
+
+-- Basic product categories
+INSERT INTO sbs.kategori (nama) VALUES 
+('Umum'), 
+('Elektronik'), 
+('Sparepart'),
+('Konsumsi'),
+('Perawatan');
+
+-- Sample customers
+INSERT INTO sbs.pelanggan (id_pelanggan, nama, email, telepon, allow_installment, credit_limit, trust_score) VALUES 
+('P001', 'Andi Wijaya', 'andi@example.com', '081234567890', true, 5000000, 85.5),
+('P002', 'Budi Santoso', 'budi@example.com', '081234567891', false, 0, 45.0),
+('P003', 'Citra Dewi', 'citra@example.com', '081234567892', true, 2000000, 72.3);
+
+-- Sample products
+INSERT INTO sbs.produk (id_produk, id_kategori, nama, harga, biaya_produk, stok, batas_stok) VALUES
+('8999999999999', 1, 'Produk Contoh 1', 50000, 35000, 100, 10),
+('8888888888888', 2, 'Elektronik Sample', 120000, 90000, 50, 5),
+('7777777777777', 3, 'Sparepart ABC', 75000, 50000, 25, 3);
+
+-- Default installment policy
+INSERT INTO sbs.kebijakan_cicilan (
+  min_member_days, 
+  min_total_belanja_3bln, 
+  min_freq_transaksi_3bln, 
+  max_tunggakan_hari, 
+  min_trust_score, 
+  min_dp_persen, 
+  max_tenor_bulan
+) VALUES (30, 1000000, 3, 0, 70.0, 20.0, 12);
+
+-- Tiered pricing example
+INSERT INTO sbs.harga_aturan (id_produk, min_qty, harga_satuan, catatan) VALUES
+('8999999999999', 1, 50000, 'Harga satuan'),
+('8999999999999', 10, 47500, 'Diskon 5% untuk pembelian 10+'),
+('8999999999999', 50, 45000, 'Diskon 10% untuk pembelian 50+');
+```
+
+## Acceptance Criteria (Phase 1)
+
+### Core Authentication & Navigation
+- ✅ User login functionality with email/password authentication
+- ✅ Automatic role-based dashboard redirection after login
+- ✅ Distinct layouts and navigation for Admin and Cashier roles
+- ✅ Proper middleware protection for role-restricted pages
+
+### Point of Sale Functionality
+- ✅ Product search and selection (barcode scan + name search)
+- ✅ Shopping cart management with real-time calculations
+- ✅ **Cash payment processing** - Complete transaction workflow
+- ✅ Transaction receipt generation and status tracking
+
+### Credit/Installment System
+- ✅ Customer credit eligibility verification
+- ✅ Installment transaction creation with proper data relationships:
+  - Create `piutang` (accounts receivable) record
+  - Generate `piutang_jadwal` (installment schedule)
+  - Record `pembayaran` (down payment) entry
+  - Update transaction status to 'selesai' (completed)
+
+### Performance Requirements
+- ✅ All data queries use pagination (limit 20-50 records)
+- ✅ Specific column selection (avoid `SELECT *` operations)
+- ✅ Responsive UI with loading states and error handling
+- ✅ Optimized database queries with proper indexing
+
+### Data Integrity
+- ✅ Row Level Security (RLS) implementation
+- ✅ Role-based access control for data operations
+- ✅ Proper foreign key relationships and constraints
+- ✅ Transaction audit trail with timestamps
+
+## Performance Guidelines & Anti-Lag Strategies
+
+### Database Query Optimization
+
+**Efficient Query Patterns:**
+```typescript
+// ✅ Good: Specific column selection
+const { data } = await supabase
+  .from('sbs.produk')
+  .select('id_produk, nama, harga, stok')
+  .range(0, 19)
+
+// ❌ Avoid: Select all columns
+const { data } = await supabase
+  .from('sbs.produk')
+  .select('*')
+```
+
+**Pagination Implementation:**
+```typescript
+// Efficient pagination with range
+const startIndex = (page - 1) * pageSize
+const endIndex = startIndex + pageSize - 1
+
+const { data, count } = await supabase
+  .from('sbs.produk')
+  .select('id_produk, nama, harga', { count: 'exact' })
+  .range(startIndex, endIndex)
+```
+
+### Frontend Performance Optimization
+
+**Search Debouncing:**
+```typescript
+// Debounced search implementation
+const searchTerm = ref('')
+const debouncedSearch = useDebounceFn(async (term: string) => {
+  if (term.length >= 2) {
+    await searchProducts(term)
+  }
+}, 250)
+
+watch(searchTerm, debouncedSearch)
+```
+
+**State Management Best Practices:**
+- Cache frequently accessed master data (categories, policies) in Pinia
+- Implement periodic refresh for cached data (every 5-10 minutes)
+- Clear transaction state after completion to prevent memory leaks
+- Use computed properties for derived state calculations
+
+**UI Responsiveness:**
+- Implement virtual scrolling for large product catalogs
+- Use skeleton loading states during data fetching
+- Optimize image loading with lazy loading and appropriate sizing
+- Implement infinite scroll for better user experience
+
+### Infrastructure Considerations
+
+**Database Indexing:**
+- All primary and foreign keys are automatically indexed
+- Additional indexes provided for common query patterns
+- Monitor slow queries and add indexes as needed for specific use cases
+
+**Caching Strategy:**
+- Client-side caching for master data (categories, pricing rules)
+- Browser localStorage for user preferences and cart state
+- Consider Redis caching for frequently accessed data in production
+
+**Monitoring & Alerting:**
+- Implement query performance monitoring
+- Set up alerts for slow-running operations
+- Monitor database connection pool usage
+- Track user session performance metrics
+
+## Future Enhancements
+
+### Advanced Payment Processing
+
+**Automated Installment Management:**
+```sql
+-- RPC function for installment payment processing
+CREATE OR REPLACE FUNCTION pay_installment(
+  p_jadwal_id BIGINT,
+  p_amount NUMERIC(12,2)
+) RETURNS JSON AS $$
+BEGIN
+  -- Update installment schedule payment status
+  -- Automatically allocate overpayments to future installments
+  -- Update overall accounts receivable outstanding balance
+  -- Close accounts receivable when fully paid
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Automated Collection System:**
+- **Scheduled Tasks**: Edge Functions or cron jobs for overdue detection
+- **Dunning Process**: Automatic marking of overdue installments
+- **Communication Integration**: SMS/WhatsApp reminder system
+- **Collection Reporting**: Aging analysis and collection effectiveness metrics
+
+### Enhanced Reporting & Analytics
+
+**Financial Reports:**
+- Detailed aging analysis for accounts receivable
+- Cash flow projections based on installment schedules
+- Profitability analysis by product category and customer segment
+
+**Operational Reports:**
+- Inventory turnover analysis
+- Sales performance by cashier and time period
+- Customer behavior analytics and segmentation
+
+**Compliance & Audit:**
+- Complete audit trail for all financial transactions
+- Regulatory compliance reporting for credit operations
+- Data export capabilities for external accounting systems
+
+### System Integration
+
+**External System Connectivity:**
+- Accounting software integration (QuickBooks, SAP, etc.)
+- Bank payment gateway integration
+- Inventory management system synchronization
+- Customer relationship management (CRM) integration
+
+**API Development:**
+- RESTful API for mobile applications
+- Webhook support for real-time notifications
+- Third-party developer documentation and SDKs
+
+---
+
+**Project Completion Summary**
+
+This comprehensive technical specification provides a complete roadmap for developing a modern Point of Sale system with sophisticated credit management capabilities. The architecture emphasizes performance, security, and scalability while maintaining simplicity for rapid development and deployment.
+
+**Key Success Factors:**
+1. **Modular Design**: Clear separation of concerns between authentication, POS operations, and credit management
+2. **Performance-First Approach**: Optimized queries, pagination, and caching strategies
+3. **Security by Design**: Row Level Security, role-based access control, and audit trails
+4. **Scalable Architecture**: Foundation for future enhancements and integrations
+5. **Developer Experience**: Clear documentation, type safety, and maintainable code structure
+
+This specification serves as a complete guide for AI agents and development teams to implement a production-ready POS system with minimal ambiguity and maximum efficiency.
