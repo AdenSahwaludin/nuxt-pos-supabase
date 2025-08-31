@@ -2,8 +2,7 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <div class="text-4xl font-bold">Ini merah</div>
 </template>
 
-<script setup>
-import NuxtLayout from "../layouts/Layout.vue";
-</script>
+<script setup></script>
