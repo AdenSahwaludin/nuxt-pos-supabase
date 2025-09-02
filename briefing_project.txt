@@ -107,3 +107,7 @@ Catatan tambahan untuk implementasi:
 - Generator ID di client (Bun/Nuxt) harus konsisten dengan format di atas.
 - Semua query ke `sbs.*` dengan paginasi dan filter yang efisien.
 - Tidak ada tabel jadwal terpisah; **jadwal angsuran disimpan di `piutang.jadwal` (JSON array)** dan digunakan UI untuk render & pembayaran termin.
+## Catatan Lingkungan
+- Menggunakan Nuxt 4 (bukan Nuxt 3); beberapa plugin dan komponen mungkin perlu penyesuaian untuk menghindari error.
+- Runtime: Bun
+- Yang sering salah di bagian "~~/lib/supabaseClient"; (ini yang benar) kadang menulisnya "~/lib/supabaseClient";.

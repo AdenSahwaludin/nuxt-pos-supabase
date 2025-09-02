@@ -27,4 +27,25 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo("/dashboard");
     }
   }
+
+  // Role-based access control
+  if (authStore.user) {
+    const userRole = authStore.profile?.role;
+
+    // Admin routes - only accessible by admin
+    if (to.path.startsWith("/admin") && userRole !== "admin") {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Access Denied - Admin Only",
+      });
+    }
+
+    // Kasir routes - only accessible by kasir
+    if (to.path.startsWith("/kasir") && userRole !== "kasir") {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Access Denied - Kasir Only",
+      });
+    }
+  }
 });

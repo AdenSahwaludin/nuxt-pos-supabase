@@ -142,19 +142,29 @@
                   ></path>
                 </svg>
                 <!-- Eye slash icon (hide) -->
+                <!-- Eye slash icon (hide) -->
                 <svg
                   v-else
-                  class="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
-                  stroke="currentColor"
                   viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  class="w-5 h-5"
                 >
+                  <!-- Mata lonjong -->
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                  ></path>
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.642-4.362m3.507-2.118A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.956 9.956 0 01-1.6 2.773M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <!-- Garis miring -->
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 3l18 18"
+                  />
                 </svg>
               </button>
             </div>
