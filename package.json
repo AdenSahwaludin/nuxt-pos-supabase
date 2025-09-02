@@ -5,6 +5,7 @@
     "@pinia/nuxt": "^0.11.2",
     "@supabase/supabase-js": "^2.56.1",
     "@tailwindcss/vite": "^4.1.12",
+    "bcryptjs": "^3.0.2",
     "nuxt": "^4.0.3",
     "pinia": "^3.0.3",
     "vue": "^3.5.20",
@@ -21,6 +22,7 @@
   "type": "module",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/bcryptjs": "^3.0.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12"

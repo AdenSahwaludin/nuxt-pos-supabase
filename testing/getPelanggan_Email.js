@@ -20,7 +20,11 @@ const run = async () => {
     console.error("🔥 Error:", error.message);
     return;
   }
-  console.log(`✉️ Email pelanggan ${ID}:`, data.email);
+  console.log(`Email pelanggan ${ID}:`, data.email);
 };
 
 run();
+
+/**
+ Email pelanggan P001: sekha12111@gmail.com
+ */

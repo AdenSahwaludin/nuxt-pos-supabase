@@ -275,14 +275,14 @@ const loadStats = async () => {
   try {
     // Load product count
     const { count: productCount } = await supabase
-      .from("sbs.produk")
+      .from("produk")
       .select("*", { count: "exact", head: true });
 
     stats.products = productCount || 0;
 
     // Load customer count
     const { count: customerCount } = await supabase
-      .from("sbs.pelanggan")
+      .from("pelanggan")
       .select("*", { count: "exact", head: true });
 
     stats.customers = customerCount || 0;
@@ -290,7 +290,7 @@ const loadStats = async () => {
     // Load today's transactions
     const today = new Date().toISOString().split("T")[0];
     const { data: todayTrx, count: todayCount } = await supabase
-      .from("sbs.transaksi")
+      .from("transaksi")
       .select("total", { count: "exact" })
       .gte("tanggal", `${today}T00:00:00`)
       .lt("tanggal", `${today}T23:59:59`);

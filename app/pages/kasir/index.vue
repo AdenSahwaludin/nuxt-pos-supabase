@@ -323,7 +323,7 @@ const loadMyStats = async () => {
 
     // Load today's transactions by this cashier
     const { data: todayTrx, count } = await supabase
-      .from("sbs.transaksi")
+      .from("transaksi")
       .select("total", { count: "exact" })
       .eq("id_pengguna", authStore.profile.id_pengguna)
       .gte("tanggal", `${today}T00:00:00`)
@@ -350,7 +350,7 @@ const loadRecentTransactions = async () => {
     const today = new Date().toISOString().split("T")[0];
 
     const { data } = await supabase
-      .from("sbs.transaksi")
+      .from("transaksi")
       .select(
         `
         id_transaksi,

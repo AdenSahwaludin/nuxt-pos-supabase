@@ -1,5 +1,7 @@
 import { defineStore } from "pinia";
 import { supabase } from "~~/lib/supabaseClient";
+import bcrypt from "bcryptjs";
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as any,
@@ -14,37 +16,54 @@ export const useAuthStore = defineStore("auth", {
         // Check if identifier is email or user ID format (001-ADN)
         const isEmail = identifier.includes("@");
 
+        let userData;
         if (isEmail) {
-          // Sign in with email
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: identifier,
-            password,
-          });
-          if (error) throw error;
+          // Get user by email
+          const { data, error } = await supabase
+            .from("pengguna")
+            .select("*")
+            .eq("email", identifier)
+            .single();
 
-          this.user = data.user;
-          await this.loadProfile();
+          if (error || !data) {
+            throw new Error("Email tidak ditemukan");
+          }
+          userData = data;
         } else {
-          // Sign in with user ID - need to get email first
-          const { data: userData, error: userError } = await supabase
-            .from("sbs.pengguna")
-            .select("email")
+          // Get user by id_pengguna
+          const { data, error } = await supabase
+            .from("pengguna")
+            .select("*")
             .eq("id_pengguna", identifier)
             .single();
 
-          if (userError || !userData?.email) {
-            throw new Error("User ID tidak ditemukan");
+          if (error || !data) {
+            throw new Error("ID Pengguna tidak ditemukan");
           }
-
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: userData.email,
-            password,
-          });
-          if (error) throw error;
-
-          this.user = data.user;
-          await this.loadProfile();
+          userData = data;
         }
+
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(
+          password,
+          userData.kata_sandi
+        );
+        if (!isPasswordValid) {
+          throw new Error("Password salah");
+        }
+
+        // Update last login
+        await supabase
+          .from("pengguna")
+          .update({ terakhir_login: new Date().toISOString() })
+          .eq("id_pengguna", userData.id_pengguna);
+
+        // Set profile
+        this.profile = userData;
+        this.user = { id: userData.user_id, email: userData.email };
+
+        // Persist auth state
+        this.persistAuth();
       } catch (error: any) {
         console.error("Login error:", error);
         throw error;
@@ -56,22 +75,25 @@ export const useAuthStore = defineStore("auth", {
     async signOut() {
       this.loading = true;
       try {
-        await supabase.auth.signOut();
         this.user = null;
         this.profile = null;
+        // Clear any stored session data
+        if (process.client) {
+          localStorage.removeItem("auth-user");
+          localStorage.removeItem("auth-profile");
+        }
       } finally {
         this.loading = false;
       }
     },
 
     async loadProfile() {
-      const uid =
-        this.user?.id || (await supabase.auth.getUser()).data.user?.id;
+      const uid = this.user?.id;
       if (!uid) return;
 
       try {
         const { data, error } = await supabase
-          .from("sbs.pengguna")
+          .from("pengguna")
           .select("*")
           .eq("user_id", uid)
           .single();
@@ -90,12 +112,15 @@ export const useAuthStore = defineStore("auth", {
     async initAuth() {
       this.loading = true;
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          this.user = user;
-          await this.loadProfile();
+        // Try to restore from localStorage
+        if (process.client) {
+          const storedUser = localStorage.getItem("auth-user");
+          const storedProfile = localStorage.getItem("auth-profile");
+
+          if (storedUser && storedProfile) {
+            this.user = JSON.parse(storedUser);
+            this.profile = JSON.parse(storedProfile);
+          }
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -103,5 +128,22 @@ export const useAuthStore = defineStore("auth", {
         this.loading = false;
       }
     },
+
+    // Helper to persist auth state
+    persistAuth() {
+      if (process.client) {
+        if (this.user)
+          localStorage.setItem("auth-user", JSON.stringify(this.user));
+        if (this.profile)
+          localStorage.setItem("auth-profile", JSON.stringify(this.profile));
+      }
+    },
+  },
+
+  getters: {
+    isAuthenticated: (state) => !!state.user,
+    userRole: (state) => state.profile?.role,
+    isAdmin: (state) => state.profile?.role === "admin",
+    isKasir: (state) => state.profile?.role === "kasir",
   },
 });
