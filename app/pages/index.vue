@@ -233,15 +233,15 @@ const showPassword = ref(false);
 const loading = ref(false);
 const error = ref("");
 
-// Temporary login handler (replace with actual auth logic)
+// Import auth store
+const authStore = useAuthStore();
+
+// Actual login handler using Supabase
 const handleLogin = async () => {
   error.value = "";
   loading.value = true;
 
   try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     // Basic validation
     if (!form.identifier || !form.password) {
       throw new Error("Semua field harus diisi");
@@ -260,26 +260,20 @@ const handleLogin = async () => {
       }
     }
 
-    // Demo credentials
-    if (
-      (form.identifier === "admin@example.com" ||
-        form.identifier === "001-ADM") &&
-      form.password === "admin123"
-    ) {
-      // Redirect to dashboard
-      await navigateTo("/dashboard");
-    } else if (
-      (form.identifier === "kasir@example.com" ||
-        form.identifier === "002-KSR") &&
-      form.password === "kasir123"
-    ) {
-      // Redirect to kasir dashboard
+    // Authenticate with Supabase
+    await authStore.signIn(form.identifier, form.password);
+
+    // Redirect based on user role
+    if (authStore.profile?.role === "admin") {
+      await navigateTo("/admin");
+    } else if (authStore.profile?.role === "kasir") {
       await navigateTo("/kasir");
     } else {
-      throw new Error("Email/ID atau password salah");
+      await navigateTo("/dashboard");
     }
   } catch (err: any) {
-    error.value = err.message || "Terjadi kesalahan saat login";
+    console.error("Login error:", err);
+    error.value = err.message || "Email/ID atau password salah";
   } finally {
     loading.value = false;
   }

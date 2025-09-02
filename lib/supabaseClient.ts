@@ -1,10 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-const config = useRuntimeConfig();
-
+// Direct environment variables from .env file
 export const supabase = createClient(
-  config.public.supabaseUrl!,
-  config.public.supabaseAnonKey!,
+  "https://mjxhddjoaoekdlhnqbhy.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qeGhkZGpvYW9la2RsaG5xYmh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNTgxMTQsImV4cCI6MjA2OTczNDExNH0.XyPUtr2KgiZwMqbz_2hS0e-UTVqhS-ucZedo0pT9Qss",
   {
     auth: {
       persistSession: true,

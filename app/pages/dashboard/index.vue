@@ -9,17 +9,31 @@
   </div>
 </template>
 
-<script setup>
-// Simulate role detection and redirect
-onMounted(async () => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+<script setup lang="ts">
+import { onMounted } from "vue";
+import { useAuthStore } from "~/stores/auth";
 
-  // TODO: Get actual user role from auth store
-  // For demo purposes, redirect to admin dashboard
-  await navigateTo("/admin");
-});
+const authStore = useAuthStore();
 
 definePageMeta({
-  auth: false, // Remove this when auth is implemented
+  layout: false,
+  middleware: ["auth"], // pastikan user sudah login
+});
+
+onMounted(async () => {
+  // jika profile belum ada, muat ulang
+  if (!authStore.profile) {
+    await authStore.loadProfile();
+  }
+
+  // opsional: delay kecil untuk UX spinner
+  await new Promise((r) => setTimeout(r, 500));
+
+  const role = authStore.profile?.role;
+  if (role === "admin") {
+    return navigateTo("/admin");
+  }
+  // fallback ke kasir
+  return navigateTo("/kasir");
 });
 </script>

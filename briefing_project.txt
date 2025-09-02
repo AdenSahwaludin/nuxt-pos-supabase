@@ -253,382 +253,167 @@ The database schema follows a comprehensive design pattern for a Point of Sale s
 ### Schema Initialization
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS sbs;
-SET search_path TO sbs, public;
-```
+-- pastikan schema sbs ada
+create schema if not exists sbs;
 
-### Enum Types
+set search_path to sbs, public;
+create type user_role as enum ('admin','kasir');
+create type trx_status as enum ('menunggu','selesai','dibatalkan');
+create type pay_method as enum ('tunai','non_tunai','cicilan');
+create type ar_status as enum ('aktif','lunas','tunggakan','gagal');
 
-```sql
--- User role definitions
-CREATE TYPE sbs.user_role AS ENUM ('admin','kasir');
+--BATAS
 
--- Transaction status tracking
-CREATE TYPE sbs.trx_status AS ENUM ('menunggu','selesai','dibatalkan');
-
--- Payment method types
-CREATE TYPE sbs.pay_method AS ENUM ('tunai','non_tunai');
-
--- Accounts receivable status
-CREATE TYPE sbs.ar_status AS ENUM ('aktif','lunas','tunggakan','gagal');
-
--- Communication channels for reminders
-CREATE TYPE sbs.reminder_channel AS ENUM ('wa','sms','telp','email','lainnya');
-
--- Binary status indicator
-CREATE TYPE sbs.yesno AS ENUM ('Y','N');
-```
-
-### Core Business Tables
-
-#### 1. User Management
-
-```sql
--- User profiles (business staff)
-CREATE TABLE IF NOT EXISTS sbs.pengguna (
-  id_pengguna CHAR(7) PRIMARY KEY,                             -- Format: 001-ADN
-  nama VARCHAR(100) NOT NULL,
-  email VARCHAR(50) UNIQUE,
-  telepon VARCHAR(20),
-  kata_sandi CHAR(60),                                         -- Legacy field (bcrypt), NOT used for auth
-  role sbs.user_role NOT NULL DEFAULT 'kasir',
-  terakhir_login TIMESTAMPTZ,
-  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE, -- Maps to Supabase Auth
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT ck_id_pengguna_format CHECK (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$')
-);
-```
-
-#### 2. Customer Management
-
-```sql
--- Customer records (ID: P001..P999)
-CREATE TABLE IF NOT EXISTS sbs.pelanggan (
-  id_pelanggan VARCHAR(4) PRIMARY KEY,                         -- Format: P001
-  nama VARCHAR(100) NOT NULL,
-  email VARCHAR(50) UNIQUE,
-  telepon VARCHAR(20),
-  kota VARCHAR(50),
-  alamat TEXT,
-  status sbs.yesno NOT NULL DEFAULT 'Y',                       -- Active/Inactive
-  tanggal_daftar DATE DEFAULT CURRENT_DATE,
-  allow_installment BOOLEAN NOT NULL DEFAULT false,
-  credit_limit NUMERIC(12,2) NOT NULL DEFAULT 0,
-  max_tenor_bulan SMALLINT NOT NULL DEFAULT 0,
-  trust_score NUMERIC(5,2) NOT NULL DEFAULT 0,                 -- Score: 0..100
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT ck_id_pelanggan_format CHECK (id_pelanggan ~ '^P[0-9]{3}$')
-);
-```
-
-#### 3. Product Catalog
-
-```sql
--- Product categories
-CREATE TABLE IF NOT EXISTS sbs.kategori (
-  id_kategori SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nama VARCHAR(100) NOT NULL
+create table if not exists pengguna (
+id_pengguna char(7) primary key check (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$'),
+nama varchar(100) not null,
+email varchar(50) unique,
+telepon varchar(20),
+kata_sandi char(60), -- legacy
+user_id uuid unique references auth.users(id) on delete cascade,
+role user_role not null default 'kasir',
+terakhir_login timestamptz,
+created_at timestamptz default now(),
+updated_at timestamptz default now()
 );
 
--- Product master data
-CREATE TABLE IF NOT EXISTS sbs.produk (
-  id_produk CHAR(13) PRIMARY KEY,                              -- EAN-13 barcode
-  id_kategori SMALLINT NOT NULL REFERENCES sbs.kategori(id_kategori),
-  nama VARCHAR(100) NOT NULL,
-  gambar VARCHAR(255),
-  nomor_bpom VARCHAR(50),
-  harga NUMERIC(12,2) NOT NULL CHECK (harga >= 0),
-  biaya_produk NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (biaya_produk >= 0),
-  stok INTEGER NOT NULL DEFAULT 0,
-  batas_stok INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+--BATAS
+
+create table if not exists pelanggan (
+id_pelanggan varchar(4) primary key check (id_pelanggan ~ '^P[0-9]{3}$'),
+nama varchar(100) not null,
+email varchar(50) unique,
+telepon varchar(20), kota varchar(50), alamat text,
+aktif boolean not null default true,
+tanggal_daftar date default current_date,
+allow_installment boolean not null default false,
+credit_limit numeric(12,2) not null default 0.00,
+max_tenor_bulan smallint not null default 0,
+trust_score numeric(5,2) not null default 0,
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_produk_kategori ON sbs.produk(id_kategori);
-```
+--BATAS
 
-#### 4. Transaction Management
-
-```sql
--- Transaction headers (credit-aware)
-CREATE TABLE IF NOT EXISTS sbs.transaksi (
-  id_transaksi VARCHAR(28) PRIMARY KEY,                        -- Format: INV-2025-05-001-P001
-  id_pengguna CHAR(7) NOT NULL REFERENCES sbs.pengguna(id_pengguna),
-  id_pelanggan VARCHAR(4) NOT NULL REFERENCES sbs.pelanggan(id_pelanggan),
-  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  total NUMERIC(12,2) NOT NULL CHECK (total >= 0),
-  status sbs.trx_status NOT NULL DEFAULT 'menunggu',
-  catatan TEXT,
-  diskon NUMERIC(12,2) CHECK (diskon IS NULL OR diskon >= 0),
-  pajak NUMERIC(12,2) CHECK (pajak IS NULL OR pajak >= 0),
-  biaya_pengiriman NUMERIC(12,2) DEFAULT 0 CHECK (biaya_pengiriman >= 0),
-
-  -- Credit transaction fields
-  tipe_pembayaran sbs.pay_method,
-  is_credit BOOLEAN NOT NULL DEFAULT false,
-  dp_amount NUMERIC(12,2) DEFAULT 0 CHECK (dp_amount >= 0),
-  due_date DATE,
-  outstanding NUMERIC(12,2) DEFAULT 0 CHECK (outstanding >= 0),
-  ar_status sbs.ar_status,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists produk (
+id_produk char(13) primary key,
+kategori varchar(100) not null,
+nama varchar(100) not null,
+gambar varchar(255), nomor_bpom varchar(50),
+harga numeric(12,2) not null check (harga >= 0),
+biaya_produk numeric(12,2) not null default 0 check (biaya_produk >= 0),
+stok integer not null default 0, batas_stok integer not null default 0,
+-- pricing pack & tier (tanpa tabel tambahan)
+unit varchar(20) default 'pcs',
+pack_unit varchar(20) default 'karton',
+pack_size int not null default 1, -- isi per karton (mis. 144)
+harga_pack numeric(12,2), -- harga per karton (total)
+qty_tier1 int, harga_tier1 numeric(12,2), -- tier pcs: min qty & harga/pcs
+harga_tier_qty int, -- ambang karton untuk tier pack (opsional)
+harga_tier_pack numeric(12,2), -- harga per karton khusus jika >= ambang
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_produk_kategori on produk(kategori);
 
-CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON sbs.transaksi(tanggal);
-CREATE INDEX IF NOT EXISTS idx_transaksi_pelanggan ON sbs.transaksi(id_pelanggan);
+--BATAS
 
--- Transaction line items
-CREATE TABLE IF NOT EXISTS sbs.transaksi_detail (
-  id_detail BIGSERIAL PRIMARY KEY,
-  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi) ON DELETE CASCADE,
-  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
-  jumlah INTEGER NOT NULL CHECK (jumlah > 0),
-  harga_satuan NUMERIC(12,2) NOT NULL CHECK (harga_satuan >= 0),
-  subtotal GENERATED ALWAYS AS (jumlah * harga_satuan) STORED
+create table if not exists transaksi (
+id_transaksi varchar(28) primary key,
+id_pengguna char(7) not null references pengguna(id_pengguna),
+id_pelanggan varchar(4) not null references pelanggan(id_pelanggan),
+tanggal timestamptz not null default now(),
+status trx_status not null default 'menunggu',
+total numeric(12,2) not null check (total >= 0),
+diskon numeric(12,2) check (diskon is null or diskon >= 0),
+pajak numeric(12,2) check (pajak is null or pajak >= 0),
+biaya_pengiriman numeric(12,2) default 0 check (biaya_pengiriman >= 0),
+is_credit boolean not null default false,
+dp_amount numeric(12,2) default 0 check (dp_amount >= 0),
+tenor_bulan smallint, due_date date,
+outstanding numeric(12,2) default 0 check (outstanding >= 0),
+ar_status ar_status,
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_transaksi_tanggal on transaksi(tanggal);
+create index if not exists idx_transaksi_pelanggan on transaksi(id_pelanggan);
 
-CREATE INDEX IF NOT EXISTS idx_trx_detail_trx ON sbs.transaksi_detail(id_transaksi);
-CREATE INDEX IF NOT EXISTS idx_trx_detail_produk ON sbs.transaksi_detail(id_produk);
-```
+--BATAS
 
-### Accounts Receivable (Credit System)
-
-```sql
--- Accounts receivable header (1:1 with credit transactions)
-CREATE TABLE IF NOT EXISTS sbs.piutang (
-  id_piutang VARCHAR(30) PRIMARY KEY,                          -- Format: AR-202508-001
-  id_transaksi VARCHAR(28) NOT NULL UNIQUE REFERENCES sbs.transaksi(id_transaksi) ON DELETE CASCADE,
-  id_pelanggan VARCHAR(4) NOT NULL REFERENCES sbs.pelanggan(id_pelanggan),
-  tenor_bulan SMALLINT NOT NULL CHECK (tenor_bulan > 0),
-  dp_amount NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (dp_amount >= 0),
-  principal NUMERIC(12,2) NOT NULL CHECK (principal >= 0),     -- Principal amount after down payment
-  bunga_persen NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (bunga_persen >= 0),
-  total_tagihan NUMERIC(12,2) NOT NULL CHECK (total_tagihan >= 0),
-  outstanding NUMERIC(12,2) NOT NULL CHECK (outstanding >= 0),
-  start_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  end_date DATE,
-  status sbs.ar_status NOT NULL DEFAULT 'aktif',
-  approved_by CHAR(7) REFERENCES sbs.pengguna(id_pengguna),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists transaksi_detail (
+id_detail bigserial primary key,
+id_transaksi varchar(28) not null references transaksi(id_transaksi) on delete cascade,
+id_produk char(13) not null references produk(id_produk),
+jumlah integer not null check (jumlah > 0),
+harga_satuan numeric(12,2) not null check (harga_satuan >= 0),
+subtotal numeric(14,2) generated always as ((jumlah::numeric * harga_satuan)) stored
 );
+create index if not exists idx_trx_detail_trx on transaksi_detail(id_transaksi);
+create index if not exists idx_trx_detail_produk on transaksi_detail(id_produk);
 
-CREATE INDEX IF NOT EXISTS idx_piutang_pelanggan ON sbs.piutang(id_pelanggan);
-CREATE INDEX IF NOT EXISTS idx_piutang_status ON sbs.piutang(status);
+--BATAS
 
--- Installment schedule (N:1 relationship)
-CREATE TABLE IF NOT EXISTS sbs.piutang_jadwal (
-  id_jadwal BIGSERIAL PRIMARY KEY,
-  id_piutang VARCHAR(30) NOT NULL REFERENCES sbs.piutang(id_piutang) ON DELETE CASCADE,
-  termin_ke SMALLINT NOT NULL,
-  due_date DATE NOT NULL,
-  amount_due NUMERIC(12,2) NOT NULL CHECK (amount_due > 0),
-  amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
-  paid_date TIMESTAMPTZ,
-  denda NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (denda >= 0),
-  status sbs.ar_status NOT NULL DEFAULT 'aktif',
-  UNIQUE (id_piutang, termin_ke)
+create table if not exists piutang (
+id_piutang varchar(30) primary key,
+id_transaksi varchar(28) not null unique references transaksi(id_transaksi) on delete cascade,
+id_pelanggan varchar(4) not null references pelanggan(id_pelanggan),
+tenor_bulan smallint not null check (tenor_bulan > 0),
+dp_amount numeric(12,2) not null default 0 check (dp_amount >= 0),
+principal numeric(12,2) not null check (principal >= 0),
+bunga_persen numeric(5,2) not null default 0 check (bunga_persen >= 0),
+total_tagihan numeric(12,2) not null check (total_tagihan >= 0),
+outstanding numeric(12,2) not null check (outstanding >= 0),
+start_date date not null default current_date, end_date date,
+jadwal jsonb not null check (jsonb_typeof(jadwal)='array'), -- [{termin_ke,due_date,amount_due,amount_paid,paid_date,denda,status}]
+status ar_status not null default 'aktif',
+approved_by char(7) references pengguna(id_pengguna),
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_piutang_pelanggan on piutang(id_pelanggan);
+create index if not exists idx_piutang_status on piutang(status);
 
-CREATE INDEX IF NOT EXISTS idx_jadwal_due ON sbs.piutang_jadwal(due_date, status);
-```
+--BATAS
 
-### Payment Processing
-
-```sql
--- Payment transactions (synchronized with installments)
-CREATE TABLE IF NOT EXISTS sbs.pembayaran (
-  id_pembayaran CHAR(20) PRIMARY KEY,                          -- Format: PAY-YYYYMMDD-001
-  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi),
-  metode sbs.pay_method NOT NULL,
-  jumlah NUMERIC(12,2) NOT NULL CHECK (jumlah > 0),
-  keterangan VARCHAR(255),
-  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- Allocation to receivables/installments (nullable for cash payments)
-  id_piutang VARCHAR(30) REFERENCES sbs.piutang(id_piutang),
-  id_jadwal BIGINT REFERENCES sbs.piutang_jadwal(id_jadwal)
+create table if not exists pembayaran (
+id_pembayaran char(20) primary key,
+id_transaksi varchar(28) not null references transaksi(id_transaksi),
+metode pay_method not null,
+jumlah numeric(12,2) not null check (jumlah > 0),
+tanggal timestamptz not null default now(),
+keterangan varchar(255),
+id_piutang varchar(30) references piutang(id_piutang),
+termin_ke smallint
 );
+create index if not exists idx_pembayaran_trx on pembayaran(id_transaksi);
+create index if not exists idx_pembayaran_piutang on pembayaran(id_piutang);
+create index if not exists idx_pembayaran_tanggal on pembayaran(tanggal);
 
-CREATE INDEX IF NOT EXISTS idx_pembayaran_trx ON sbs.pembayaran(id_transaksi);
-CREATE INDEX IF NOT EXISTS idx_pembayaran_piutang ON sbs.pembayaran(id_piutang);
-CREATE INDEX IF NOT EXISTS idx_pembayaran_tanggal ON sbs.pembayaran(tanggal);
-```
+--BATAS
 
-### Credit Eligibility & Business Rules
+alter table pengguna enable row level security;
+alter table pelanggan enable row level security;
+alter table produk enable row level security;
+alter table transaksi enable row level security;
+alter table transaksi_detail enable row level security;
+alter table piutang enable row level security;
+alter table pembayaran enable row level security;
 
-```sql
--- Global installment policy rules
-CREATE TABLE IF NOT EXISTS sbs.kebijakan_cicilan (
-  id_kebijakan SMALLSERIAL PRIMARY KEY,
-  min_member_days INTEGER NOT NULL DEFAULT 30,
-  min_total_belanja_3bln NUMERIC(12,2) NOT NULL DEFAULT 0,
-  min_freq_transaksi_3bln INTEGER NOT NULL DEFAULT 0,
-  max_tunggakan_hari INTEGER NOT NULL DEFAULT 0,
-  min_trust_score NUMERIC(5,2) NOT NULL DEFAULT 70.0,
-  min_dp_persen NUMERIC(5,2) NOT NULL DEFAULT 20.0,
-  max_tenor_bulan SMALLINT NOT NULL DEFAULT 6,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- Customer-specific policy overrides (whitelist/blacklist)
-CREATE TABLE IF NOT EXISTS sbs.kebijakan_cicilan_per_pelanggan (
-  id_pelanggan VARCHAR(4) PRIMARY KEY REFERENCES sbs.pelanggan(id_pelanggan) ON DELETE CASCADE,
-  allow_installment BOOLEAN,
-  credit_limit NUMERIC(12,2) CHECK (credit_limit IS NULL OR credit_limit >= 0),
-  max_tenor_bulan SMALLINT,
-  min_dp_persen NUMERIC(5,2) CHECK (min_dp_persen IS NULL OR min_dp_persen >= 0),
-  notes TEXT,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+create or replace view sbs_pengguna_view as select p.* from pengguna p where p.user_id = auth.uid();
 
--- Customer metrics snapshot (for daily/weekly scoring)
-CREATE TABLE IF NOT EXISTS sbs.pelanggan_metric_snapshot (
-  id_pelanggan VARCHAR(4) REFERENCES sbs.pelanggan(id_pelanggan) ON DELETE CASCADE,
-  snapshot_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  total_belanja_3bln NUMERIC(12,2) NOT NULL DEFAULT 0,
-  freq_transaksi_3bln INTEGER NOT NULL DEFAULT 0,
-  ontime_payment_rate NUMERIC(5,2) NOT NULL DEFAULT 100.0,    -- Percentage
-  avg_basket NUMERIC(12,2) NOT NULL DEFAULT 0,
-  last_trx_at TIMESTAMPTZ,
-  tunggakan_hari INTEGER NOT NULL DEFAULT 0,
-  UNIQUE (id_pelanggan, snapshot_date)
-);
 
-CREATE INDEX IF NOT EXISTS idx_pelanggan_metric_recent 
-ON sbs.pelanggan_metric_snapshot(id_pelanggan, snapshot_date DESC);
-```
+create policy r_all_pengguna on pengguna for select using (auth.uid() is not null);
+create policy r_all_pelanggan on pelanggan for select using (auth.uid() is not null);
+create policy r_all_produk on produk for select using (auth.uid() is not null);
+create policy r_all_trx on transaksi for select using (auth.uid() is not null);
+create policy r_all_detail on transaksi_detail for select using (auth.uid() is not null);
+create policy r_all_piutang on piutang for select using (auth.uid() is not null);
+create policy r_all_bayar on pembayaran for select using (auth.uid() is not null);
 
-### Optional Enhancement Tables
 
-```sql
--- Inventory movement ledger
-CREATE TABLE IF NOT EXISTS sbs.stok_mutasi (
-  id_mutasi BIGSERIAL PRIMARY KEY,
-  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
-  waktu TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  tipe VARCHAR(20) NOT NULL,            -- 'penjualan','restock','retur','adjust'
-  qty INTEGER NOT NULL,
-  referensi VARCHAR(50),                -- Transaction ID or other reference
-  keterangan TEXT
-);
+create policy w_admin_produk on produk for all using (exists (select 1 from pengguna where user_id=auth.uid() and role='admin')) with check (exists (select 1 from pengguna where user_id=auth.uid() and role='admin'));
+create policy w_kasir_trx on transaksi for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
+create policy w_kasir_bayar on pembayaran for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
 
-CREATE INDEX IF NOT EXISTS idx_stok_mutasi_produk ON sbs.stok_mutasi(id_produk);
-CREATE INDEX IF NOT EXISTS idx_stok_mutasi_waktu ON sbs.stok_mutasi(waktu);
-
--- Tiered pricing rules
-CREATE TABLE IF NOT EXISTS sbs.harga_aturan (
-  id_harga BIGSERIAL PRIMARY KEY,
-  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
-  min_qty INTEGER NOT NULL DEFAULT 1 CHECK (min_qty > 0),
-  harga_satuan NUMERIC(12,2) NOT NULL CHECK (harga_satuan >= 0),
-  catatan VARCHAR(120)
-);
-
-CREATE INDEX IF NOT EXISTS idx_harga_aturan_produk ON sbs.harga_aturan(id_produk);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_harga_tier ON sbs.harga_aturan(id_produk, min_qty);
-
--- Collection activity log (dunning)
-CREATE TABLE IF NOT EXISTS sbs.penagihan_log (
-  id_log BIGSERIAL PRIMARY KEY,
-  id_piutang VARCHAR(30) NOT NULL REFERENCES sbs.piutang(id_piutang) ON DELETE CASCADE,
-  id_jadwal BIGINT REFERENCES sbs.piutang_jadwal(id_jadwal) ON DELETE SET NULL,
-  channel sbs.reminder_channel NOT NULL,
-  waktu TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  hasil TEXT,
-  petugas CHAR(7) REFERENCES sbs.pengguna(id_pengguna)
-);
-
-CREATE INDEX IF NOT EXISTS idx_penagihan_piutang ON sbs.penagihan_log(id_piutang);
-```
-
-### Row Level Security (RLS) Implementation
-
-```sql
--- Enable RLS on all tables
-ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.pelanggan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.kategori ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.produk ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.transaksi ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.transaksi_detail ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.pembayaran ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.piutang ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.piutang_jadwal ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.kebijakan_cicilan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.kebijakan_cicilan_per_pelanggan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.pelanggan_metric_snapshot ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.stok_mutasi ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.harga_aturan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.penagihan_log ENABLE ROW LEVEL SECURITY;
-
--- Helper view for authenticated users
-CREATE OR REPLACE VIEW sbs_pengguna_view AS
-SELECT p.* FROM sbs.pengguna p WHERE p.user_id = auth.uid();
-
--- Read policies (basic authentication required)
-CREATE POLICY sbs_read_all_pengguna ON sbs.pengguna
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_basic ON sbs.pelanggan 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_kategori ON sbs.kategori 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_produk ON sbs.produk 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_transaksi ON sbs.transaksi 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_detail ON sbs.transaksi_detail 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_pembayaran ON sbs.pembayaran 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_piutang ON sbs.piutang 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_jadwal ON sbs.piutang_jadwal 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
--- Write policies (role-based restrictions)
-CREATE POLICY sbs_write_admin_produk ON sbs.produk
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
-
--- Cashier permissions for transactions and payments
-CREATE POLICY sbs_kasir_insert_transaksi ON sbs.transaksi
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
-    )
-  );
-
-CREATE POLICY sbs_kasir_insert_pembayaran ON sbs.pembayaran
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
-    )
-  );
 ```
 
 ## ID Generation System
