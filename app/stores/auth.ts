@@ -77,11 +77,13 @@ export const useAuthStore = defineStore("auth", {
       try {
         this.user = null;
         this.profile = null;
-        // Clear any stored session data
+        // Clear stored session data
         if (process.client) {
           localStorage.removeItem("auth-user");
           localStorage.removeItem("auth-profile");
         }
+        // Redirect to login page
+        await navigateTo("/");
       } finally {
         this.loading = false;
       }
@@ -120,10 +122,29 @@ export const useAuthStore = defineStore("auth", {
           if (storedUser && storedProfile) {
             this.user = JSON.parse(storedUser);
             this.profile = JSON.parse(storedProfile);
+
+            // Validate session by checking if user still exists in database
+            const { data, error } = await supabase
+              .from("pengguna")
+              .select("*")
+              .eq("id_pengguna", this.profile.id_pengguna)
+              .single();
+
+            if (error || !data) {
+              // Session invalid, clear storage
+              this.signOut();
+              return;
+            }
+
+            // Update profile with latest data
+            this.profile = data;
+            this.persistAuth();
           }
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
+        // Clear invalid session
+        this.signOut();
       } finally {
         this.loading = false;
       }
