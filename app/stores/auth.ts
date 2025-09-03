@@ -116,11 +116,12 @@ export const useAuthStore = defineStore("auth", {
 
     async initAuth() {
       this.loading = true;
+      console.log("🔧 Initializing auth...");
+      
       try {
-        // Get current session from Supabase Auth
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // First, try to get session from Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("📡 Supabase session:", session?.user?.id);
 
         if (session?.user) {
           this.user = session.user;
@@ -135,16 +136,60 @@ export const useAuthStore = defineStore("auth", {
           if (!error && profileData) {
             this.profile = profileData;
             this.persistAuth();
+            console.log("✅ Auth restored from Supabase:", profileData.role);
+            return; // Exit early if successful
           } else {
-            // Profile not found, clear session
-            await this.signOut();
+            console.log("❌ Profile not found for user:", session.user.id);
           }
         }
+
+        // Fallback: try to restore from localStorage if Supabase session is not available
+        if (process.client) {
+          const storedUser = localStorage.getItem("auth-user");
+          const storedProfile = localStorage.getItem("auth-profile");
+          console.log("💾 Checking localStorage...", !!storedUser, !!storedProfile);
+
+          if (storedUser && storedProfile) {
+            const userData = JSON.parse(storedUser);
+            const profileData = JSON.parse(storedProfile);
+
+            // Validate that the stored session is still valid by checking database
+            const { data: currentProfile, error } = await supabase
+              .from("pengguna")
+              .select("*")
+              .eq("user_id", userData.id)
+              .single();
+
+            if (!error && currentProfile) {
+              this.user = userData;
+              this.profile = currentProfile;
+              this.persistAuth();
+              console.log("✅ Auth restored from localStorage:", currentProfile.role);
+              return;
+            } else {
+              console.log("❌ Stored session invalid, clearing...");
+            }
+          }
+        }
+
+        // If we get here, no valid session found - clear everything
+        console.log("🧹 No valid session found, clearing auth...");
+        await this.clearAuth();
       } catch (error) {
-        console.error("Error initializing auth:", error);
-        await this.signOut();
+        console.error("💥 Error initializing auth:", error);
+        await this.clearAuth();
       } finally {
         this.loading = false;
+        console.log("🏁 Auth initialization complete. User:", !!this.user, "Role:", this.profile?.role);
+      }
+    },
+
+    async clearAuth() {
+      this.user = null;
+      this.profile = null;
+      if (process.client) {
+        localStorage.removeItem("auth-user");
+        localStorage.removeItem("auth-profile");
       }
     },
 
