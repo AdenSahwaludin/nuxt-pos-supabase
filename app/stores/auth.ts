@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import { supabase } from "~~/lib/supabaseClient";
-import bcrypt from "bcryptjs";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -15,52 +14,52 @@ export const useAuthStore = defineStore("auth", {
       try {
         // Check if identifier is email or user ID format (001-ADN)
         const isEmail = identifier.includes("@");
+        let email = identifier;
 
-        let userData;
-        if (isEmail) {
-          // Get user by email
-          const { data, error } = await supabase
+        // If using ID format, get email first
+        if (!isEmail) {
+          const { data: userData, error } = await supabase
             .from("pengguna")
-            .select("*")
-            .eq("email", identifier)
-            .single();
-
-          if (error || !data) {
-            throw new Error("Email tidak ditemukan");
-          }
-          userData = data;
-        } else {
-          // Get user by id_pengguna
-          const { data, error } = await supabase
-            .from("pengguna")
-            .select("*")
+            .select("email")
             .eq("id_pengguna", identifier)
             .single();
 
-          if (error || !data) {
+          if (error || !userData) {
             throw new Error("ID Pengguna tidak ditemukan");
           }
-          userData = data;
+          email = userData.email;
         }
 
-        // Verify password
-        const isPasswordValid = await bcrypt.compare(
+        // Sign in with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
           password,
-          userData.kata_sandi
-        );
-        if (!isPasswordValid) {
-          throw new Error("Password salah");
+        });
+
+        if (authError) {
+          throw new Error("Email/ID atau password salah");
+        }
+
+        // Get profile and role from sbs.pengguna
+        const { data: profileData, error: profileError } = await supabase
+          .from("pengguna")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .single();
+
+        if (profileError || !profileData) {
+          throw new Error("Profile tidak ditemukan");
         }
 
         // Update last login
         await supabase
           .from("pengguna")
           .update({ terakhir_login: new Date().toISOString() })
-          .eq("id_pengguna", userData.id_pengguna);
+          .eq("user_id", authData.user.id);
 
-        // Set profile
-        this.profile = userData;
-        this.user = { id: userData.user_id, email: userData.email };
+        // Set user and profile
+        this.user = authData.user;
+        this.profile = profileData;
 
         // Persist auth state
         this.persistAuth();
@@ -75,6 +74,9 @@ export const useAuthStore = defineStore("auth", {
     async signOut() {
       this.loading = true;
       try {
+        // Sign out from Supabase Auth
+        await supabase.auth.signOut();
+        
         this.user = null;
         this.profile = null;
         // Clear stored session data
@@ -114,37 +116,30 @@ export const useAuthStore = defineStore("auth", {
     async initAuth() {
       this.loading = true;
       try {
-        // Try to restore from localStorage
-        if (process.client) {
-          const storedUser = localStorage.getItem("auth-user");
-          const storedProfile = localStorage.getItem("auth-profile");
+        // Get current session from Supabase Auth
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          this.user = session.user;
+          
+          // Get profile from sbs.pengguna
+          const { data: profileData, error } = await supabase
+            .from("pengguna")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .single();
 
-          if (storedUser && storedProfile) {
-            this.user = JSON.parse(storedUser);
-            this.profile = JSON.parse(storedProfile);
-
-            // Validate session by checking if user still exists in database
-            const { data, error } = await supabase
-              .from("pengguna")
-              .select("*")
-              .eq("id_pengguna", this.profile.id_pengguna)
-              .single();
-
-            if (error || !data) {
-              // Session invalid, clear storage
-              this.signOut();
-              return;
-            }
-
-            // Update profile with latest data
-            this.profile = data;
+          if (!error && profileData) {
+            this.profile = profileData;
             this.persistAuth();
+          } else {
+            // Profile not found, clear session
+            await this.signOut();
           }
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
-        // Clear invalid session
-        this.signOut();
+        await this.signOut();
       } finally {
         this.loading = false;
       }

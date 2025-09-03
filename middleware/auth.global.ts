@@ -5,7 +5,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore();
 
   // Routes that don't require authentication
-  const publicRoutes = ["/", "/login"];
+  const publicRoutes = ["/"];
 
   // Initialize auth if not already done
   if (!authStore.user && !authStore.loading) {
@@ -25,27 +25,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo("/kasir");
     } else {
       return navigateTo("/dashboard");
-    }
-  }
-
-  // Role-based access control
-  if (authStore.user) {
-    const userRole = authStore.profile?.role;
-
-    // Admin routes - only accessible by admin
-    if (to.path.startsWith("/admin") && userRole !== "admin") {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Access Denied - Admin Only",
-      });
-    }
-
-    // Kasir routes - only accessible by kasir
-    if (to.path.startsWith("/kasir") && userRole !== "kasir") {
-      throw createError({
-        statusCode: 403,
-        statusMessage: "Access Denied - Kasir Only",
-      });
     }
   }
 });
