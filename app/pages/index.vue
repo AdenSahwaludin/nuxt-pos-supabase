@@ -203,8 +203,8 @@
             ></div>
           </button>
 
-          <!-- Forgot Password Link -->
-          <div class="text-center">
+          <!-- Remove Forgot Password Link -->
+          <!-- <div class="text-center">
             <button
               type="button"
               class="text-emerald-300 hover:text-emerald-200 text-sm transition-colors duration-200 hover:underline"
@@ -212,7 +212,7 @@
             >
               Lupa password?
             </button>
-          </div>
+          </div> -->
         </form>
 
         <!-- Footer -->
