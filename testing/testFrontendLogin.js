@@ -7,8 +7,8 @@ const supabase = createClient(
   "https://mjxhddjoaoekdlhnqbhy.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qeGhkZGpvYW9la2RsaG5xYmh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNTgxMTQsImV4cCI6MjA2OTczNDExNH0.XyPUtr2KgiZwMqbz_2hS0e-UTVqhS-ucZedo0pT9Qss",
   {
-    db: { 
-      schema: "sbs" 
+    db: {
+      schema: "sbs",
     },
     auth: {
       persistSession: true,
@@ -20,7 +20,7 @@ const supabase = createClient(
 
 const testFrontendLogin = async (identifier, password) => {
   console.log(`\n🔐 Testing frontend-style login: ${identifier}`);
-  
+
   try {
     // Check if identifier is email or user ID format (001-ADN)
     const isEmail = identifier.includes("@");
@@ -85,7 +85,7 @@ const run = async () => {
     { identifier: "test@test.test", password: "12345678" },
     { identifier: "001-ADN", password: "12345678" },
     { identifier: "kasir@kasir.kasir", password: "12345678" },
-    { identifier: "002-KSR", password: "12345678" }
+    { identifier: "002-KSR", password: "12345678" },
   ];
 
   for (const testCase of testCases) {
@@ -93,7 +93,9 @@ const run = async () => {
   }
 
   console.log("\n🏁 Frontend test completed!");
-  console.log("\n💡 If this works, the issue is likely in browser/session handling");
+  console.log(
+    "\n💡 If this works, the issue is likely in browser/session handling"
+  );
 };
 
 run();

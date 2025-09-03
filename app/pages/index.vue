@@ -227,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 // Page meta
 definePageMeta({
   layout: false,

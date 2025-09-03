@@ -9,7 +9,7 @@ const supabase = createClient(
 
 const checkUsers = async () => {
   console.log("🔍 Checking users in database...\n");
-  
+
   try {
     // Get all users from pengguna table
     const { data: users, error } = await supabase
@@ -29,7 +29,7 @@ const checkUsers = async () => {
 
     console.log(`✅ Found ${users.length} users:`);
     console.log("═══════════════════════════════════════════════");
-    
+
     users.forEach((user, index) => {
       console.log(`${index + 1}. ID: ${user.id_pengguna}`);
       console.log(`   Nama: ${user.nama}`);
@@ -41,12 +41,12 @@ const checkUsers = async () => {
 
     // Test specific ID search
     console.log("\n🔎 Testing specific ID searches:");
-    
+
     const testIds = ["001-ADN", "002-KSR"];
-    
+
     for (const testId of testIds) {
       console.log(`\nSearching for ID: ${testId}`);
-      
+
       const { data: user, error: searchError } = await supabase
         .from("pengguna")
         .select("*")
@@ -61,7 +61,6 @@ const checkUsers = async () => {
         console.log(`❌ Not found`);
       }
     }
-
   } catch (error) {
     console.error("❌ Unexpected error:", error);
   }
