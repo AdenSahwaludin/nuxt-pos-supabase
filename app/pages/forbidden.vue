@@ -3,10 +3,14 @@
     <div class="text-center">
       <div class="mb-8">
         <h1 class="text-6xl font-bold text-gray-900 mb-4">403</h1>
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Access Forbidden</h2>
-        <p class="text-gray-600 mb-8">Anda tidak memiliki akses untuk halaman ini.</p>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">
+          Access Forbidden
+        </h2>
+        <p class="text-gray-600 mb-8">
+          Anda tidak memiliki akses untuk halaman ini.
+        </p>
       </div>
-      
+
       <div class="space-y-4">
         <button
           @click="goBack"
@@ -35,6 +39,6 @@ const goBack = () => {
 };
 
 const goHome = () => {
-  navigateTo('/');
+  navigateTo("/");
 };
 </script>

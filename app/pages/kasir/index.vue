@@ -34,8 +34,8 @@
 <script setup lang="ts">
 definePageMeta({
   layout: false,
-  middleware: 'role',
-  role: 'kasir',
+  middleware: "role",
+  role: "kasir",
 });
 
 const authStore = useAuthStore();

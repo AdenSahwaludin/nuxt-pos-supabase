@@ -31,10 +31,11 @@ export const useAuthStore = defineStore("auth", {
         }
 
         // Sign in with Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data: authData, error: authError } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
         if (authError) {
           throw new Error("Email/ID atau password salah");
@@ -76,7 +77,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         // Sign out from Supabase Auth
         await supabase.auth.signOut();
-        
+
         this.user = null;
         this.profile = null;
         // Clear stored session data
@@ -117,11 +118,13 @@ export const useAuthStore = defineStore("auth", {
       this.loading = true;
       try {
         // Get current session from Supabase Auth
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (session?.user) {
           this.user = session.user;
-          
+
           // Get profile from sbs.pengguna
           const { data: profileData, error } = await supabase
             .from("pengguna")

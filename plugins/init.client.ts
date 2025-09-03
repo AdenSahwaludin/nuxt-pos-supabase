@@ -1,4 +1,4 @@
-import { supabase } from '~/lib/supabaseClient';
+import { supabase } from "~/lib/supabaseClient";
 
 export default defineNuxtPlugin(async () => {
   const authStore = useAuthStore();
@@ -8,12 +8,12 @@ export default defineNuxtPlugin(async () => {
 
   // Listen to auth state changes
   supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
+    if (event === "SIGNED_IN" && session) {
       // Get profile when user signs in
       const { data: profileData } = await supabase
-        .from('pengguna')
-        .select('*')
-        .eq('user_id', session.user.id)
+        .from("pengguna")
+        .select("*")
+        .eq("user_id", session.user.id)
         .single();
 
       if (profileData) {
@@ -21,13 +21,13 @@ export default defineNuxtPlugin(async () => {
         authStore.profile = profileData;
         authStore.persistAuth();
       }
-    } else if (event === 'SIGNED_OUT') {
+    } else if (event === "SIGNED_OUT") {
       // Clear auth state when user signs out
       authStore.user = null;
       authStore.profile = null;
       if (process.client) {
-        localStorage.removeItem('auth-user');
-        localStorage.removeItem('auth-profile');
+        localStorage.removeItem("auth-user");
+        localStorage.removeItem("auth-profile");
       }
     }
   });
