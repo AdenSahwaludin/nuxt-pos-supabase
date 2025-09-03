@@ -117,10 +117,12 @@ export const useAuthStore = defineStore("auth", {
     async initAuth() {
       this.loading = true;
       console.log("🔧 Initializing auth...");
-      
+
       try {
         // First, try to get session from Supabase
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         console.log("📡 Supabase session:", session?.user?.id);
 
         if (session?.user) {
@@ -147,7 +149,11 @@ export const useAuthStore = defineStore("auth", {
         if (process.client) {
           const storedUser = localStorage.getItem("auth-user");
           const storedProfile = localStorage.getItem("auth-profile");
-          console.log("💾 Checking localStorage...", !!storedUser, !!storedProfile);
+          console.log(
+            "💾 Checking localStorage...",
+            !!storedUser,
+            !!storedProfile
+          );
 
           if (storedUser && storedProfile) {
             const userData = JSON.parse(storedUser);
@@ -164,7 +170,10 @@ export const useAuthStore = defineStore("auth", {
               this.user = userData;
               this.profile = currentProfile;
               this.persistAuth();
-              console.log("✅ Auth restored from localStorage:", currentProfile.role);
+              console.log(
+                "✅ Auth restored from localStorage:",
+                currentProfile.role
+              );
               return;
             } else {
               console.log("❌ Stored session invalid, clearing...");
@@ -180,7 +189,12 @@ export const useAuthStore = defineStore("auth", {
         await this.clearAuth();
       } finally {
         this.loading = false;
-        console.log("🏁 Auth initialization complete. User:", !!this.user, "Role:", this.profile?.role);
+        console.log(
+          "🏁 Auth initialization complete. User:",
+          !!this.user,
+          "Role:",
+          this.profile?.role
+        );
       }
     },
 

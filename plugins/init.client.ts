@@ -9,7 +9,7 @@ export default defineNuxtPlugin(async () => {
   // Listen to auth state changes
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log("Auth state changed:", event, session?.user?.id);
-    
+
     if (event === "SIGNED_IN" && session) {
       // Get profile when user signs in
       const { data: profileData } = await supabase
