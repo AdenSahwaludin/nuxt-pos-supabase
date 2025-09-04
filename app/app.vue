@@ -1,12 +1,19 @@
 <template>
-  <NuxtPage />
+  <NuxtLayout :name="layoutName">
+    <NuxtPage />
+  </NuxtLayout>
 </template>
 
-<script setup>
-// Initialize auth store
-import { useAuthStore } from "@/stores/auth"; // <- tambahkan ini
+<script setup lang="ts">
+import { useAuthStore } from "@/stores/auth";
+
 const authStore = useAuthStore();
-// Initialize authentication state on app startup
+const layoutName = computed(() => {
+  if (authStore.userRole === "admin") return "admin";
+  if (authStore.userRole === "kasir") return "kasir";
+  return "default";
+});
+
 onMounted(async () => {
   await authStore.initAuth();
 });

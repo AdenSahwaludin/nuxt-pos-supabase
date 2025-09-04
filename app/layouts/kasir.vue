@@ -68,7 +68,7 @@ const authStore = useAuthStore();
 const logout = async () => {
   try {
     await authStore.signOut();
-    await navigateTo("/");
+    await navigateTo("/login");
   } catch (error) {
     console.error("Logout error:", error);
   }

@@ -5,7 +5,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore();
 
   // Routes that don't require authentication
-  const publicRoutes = ["/"];
+  const publicRoutes = ["/", "/login"];
 
   // Always ensure auth is initialized
   if (!authStore.user) {
@@ -21,11 +21,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // If not authenticated and trying to access protected route
   if (!authStore.user && !publicRoutes.includes(to.path)) {
-    return navigateTo("/");
+    return navigateTo("/login");
   }
 
   // If authenticated and trying to access login page, redirect based on role
-  if (authStore.user && authStore.profile && to.path === "/") {
+  if (authStore.user && authStore.profile?.role && to.path === "/login") {
     if (authStore.profile.role === "admin") {
       return navigateTo("/admin");
     } else if (authStore.profile.role === "kasir") {

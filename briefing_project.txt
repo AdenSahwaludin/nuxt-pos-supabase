@@ -23,10 +23,10 @@ Format ID yang digunakan dalam sistem:
 Berikut adalah tabel utama yang harus diimplementasikan sesuai dengan database yang ada:
 
 1. **pengguna** — Data staf toko dan role, di-map ke `auth.users` via `user_id`.
-   - Field kunci: `id_pengguna`, `nama`, `email`, `telepon`, `role`, `terakhir_login`, audit time (`created_at`, `updated_at`).
+   - Field kunci: `id` (uuid pk), `id_pengguna` (varchar, format: 001-ADN), `nama` (varchar(100)), `email` (varchar(150) unique), `telepon` (varchar(20)), `role` (enum: 'admin','kasir'), `status` (enum: 'aktif','nonaktif'), `user_id` (uuid ref auth.users), `terakhir_login` (timestamptz), audit time (`created_at`, `updated_at`).
 
 2. **pelanggan** — Profil pelanggan dengan flag kredit.
-   - Field kunci: `id_pelanggan`, `aktif`, `allow_installment`, `credit_limit`, `max_tenor_bulan`, `trust_score`, audit time.
+   - Field kunci: `id` (uuid pk), `id_pelanggan` (varchar, format: P001-P999999), `nama` (varchar(120)), `no_hp` (varchar(20) unique), `email` (varchar(150) unique), `alamat` (text), `status` (enum: 'aktif','nonaktif'), `allow_installment` (boolean), `credit_limit` (decimal), `max_tenor_bulan` (integer), `trust_score` (integer), audit time (`created_at`, `updated_at`).
 
 3. **kategori** — Master data kategori produk.
    - Field kunci: `id_kategori`, `nama`, audit time.

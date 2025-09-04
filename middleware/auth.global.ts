@@ -1,6 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to) => {
   // Skip middleware in server-side rendering
-  if (process.server) return;
+  // if (process.server) return;
 
   const authStore = useAuthStore();
 
@@ -21,7 +21,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // If not authenticated and trying to access protected route
   if (!authStore.user && !publicRoutes.includes(to.path)) {
-    return navigateTo("/");
+    return navigateTo("/login");
   }
 
   // If authenticated and trying to access login page, redirect based on role

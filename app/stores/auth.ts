@@ -25,7 +25,8 @@ export const useAuthStore = defineStore("auth", {
             .single();
 
           if (error || !userData) {
-            throw new Error("ID Pengguna tidak ditemukan");
+            console.error("ID Pengguna tidak ditemukan");
+            return false;
           }
           email = userData.email;
         }
@@ -38,7 +39,8 @@ export const useAuthStore = defineStore("auth", {
           });
 
         if (authError) {
-          throw new Error("Email/ID atau password salah");
+          console.error("Email/ID atau password salah");
+          return false;
         }
 
         // Get profile and role from sbs.pengguna
@@ -49,7 +51,8 @@ export const useAuthStore = defineStore("auth", {
           .single();
 
         if (profileError || !profileData) {
-          throw new Error("Profile tidak ditemukan");
+          console.error("Profile tidak ditemukan");
+          return false;
         }
 
         // Update last login
@@ -64,9 +67,11 @@ export const useAuthStore = defineStore("auth", {
 
         // Persist auth state
         this.persistAuth();
+
+        return true;
       } catch (error: any) {
         console.error("Login error:", error);
-        throw error;
+        return false;
       } finally {
         this.loading = false;
       }
@@ -86,7 +91,7 @@ export const useAuthStore = defineStore("auth", {
           localStorage.removeItem("auth-profile");
         }
         // Redirect to login page
-        await navigateTo("/");
+        await navigateTo("/login");
       } finally {
         this.loading = false;
       }
