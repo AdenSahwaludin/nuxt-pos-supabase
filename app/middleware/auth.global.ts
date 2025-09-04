@@ -10,11 +10,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Always ensure auth is initialized
   if (!authStore.user) {
     await authStore.initAuth();
-    
+
     // Wait a bit more for session to be fully restored
     let retries = 0;
     while (!authStore.user && retries < 5) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
       retries++;
     }
   }
