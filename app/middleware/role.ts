@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore();
 
@@ -9,29 +8,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // Redirect to login if user or profile still missing
   if (!authStore.user || !authStore.profile) {
-=======
-export default defineNuxtRouteMiddleware((to) => {
-  console.log("🔧 Role middleware triggered for:", to.path);
-
-  const authStore = useAuthStore();
-
-  console.log("👤 Auth check:", {
-    hasUser: !!authStore.user,
-    hasProfile: !!authStore.profile,
-    profileRole: authStore.profile?.role,
-    userLoading: authStore.loading,
-  });
-
-  // Check if user is authenticated
-  if (!authStore.user) {
-    console.log("❌ No user found, redirecting to login");
->>>>>>> 75b4990 (fix: update PenggunaCreateModal.vue with manual edits)
     return navigateTo("/login");
   }
 
   // Check if route has role requirement
   const requiredRole = to.meta?.requiredRole || to.meta?.role;
-<<<<<<< HEAD
   const userRole = authStore.profile?.role;
 
   if (!userRole) {
@@ -45,14 +26,6 @@ export default defineNuxtRouteMiddleware((to) => {
     } else if (userRole === "kasir") {
       return navigateTo("/kasir");
     } else {
-=======
-  console.log("🔐 Required role:", requiredRole);
-  console.log("👤 User role:", authStore.profile?.role);
-
-  if (requiredRole) {
-    if (!authStore.profile) {
-      console.log("❌ No profile found but role required");
->>>>>>> 75b4990 (fix: update PenggunaCreateModal.vue with manual edits)
       return navigateTo("/login");
     }
 

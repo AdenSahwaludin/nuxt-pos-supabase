@@ -62,7 +62,7 @@
             >Filter Status</label
           >
           <select
-            v-model="filters.role"
+            v-model="filters.status"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             @change="loadPengguna"
           >
@@ -414,8 +414,8 @@ const showDetailModal = ref(false);
 
 // Filters
 const filters = reactive({
-  role: "admin",
-  status: "aktif",
+  role: "",
+  status: "",
 });
 
 // Pagination
