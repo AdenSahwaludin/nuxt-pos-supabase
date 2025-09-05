@@ -269,6 +269,7 @@
 // @ts-nocheck
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { X, Eye, EyeOff, UserPlus } from "lucide-vue-next";
+import { supabase } from "~~/lib/supabaseClient";
 
 const emit = defineEmits<{
   close: [];
@@ -312,11 +313,42 @@ const generatedId = computed(() => {
 // Methods
 const getNextNumber = async () => {
   try {
-    // TODO: Get next number from API
-    // For now, simulate getting next available number
-    nextNumber.value = "003"; // This would come from API
+    console.log("🔧 Getting next pengguna number...");
+
+    // Get the latest pengguna to determine next number
+    const { data: latestPengguna, error } = await supabase
+      .from("pengguna")
+      .select("id_pengguna")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("❌ Error getting latest pengguna:", error);
+      nextNumber.value = "001"; // Default fallback
+      return;
+    }
+
+    if (latestPengguna && latestPengguna.length > 0) {
+      const lastId = latestPengguna[0].id_pengguna;
+      console.log("📝 Latest ID:", lastId);
+
+      // Extract number from format like "001-ADN"
+      const parts = lastId.split("-");
+      if (parts.length > 0) {
+        const lastNumber = parseInt(parts[0]);
+        const nextNum = lastNumber + 1;
+        nextNumber.value = String(nextNum).padStart(3, "0");
+      } else {
+        nextNumber.value = "001";
+      }
+    } else {
+      console.log("📭 No existing pengguna found, starting with 001");
+      nextNumber.value = "001";
+    }
+
+    console.log("✅ Next number:", nextNumber.value);
   } catch (error) {
-    console.error("Error getting next number:", error);
+    console.error("❌ Error getting next number:", error);
     nextNumber.value = "001";
   }
 };
@@ -387,25 +419,79 @@ const handleSubmit = async () => {
   submitError.value = "";
 
   try {
-    // TODO: Implement API call to create user
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+    console.log("🔧 Creating new pengguna...");
 
-    const newPengguna = {
-      id: Date.now().toString(),
+    // Step 1: Create user in Supabase Auth
+    console.log("📝 Creating auth user for:", form.email);
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          nama: form.nama,
+          role: form.role,
+        },
+      },
+    });
+
+    if (authError) {
+      console.error("❌ Auth creation error:", authError);
+      throw new Error("Gagal membuat akun: " + authError.message);
+    }
+
+    if (!authData.user) {
+      throw new Error("Gagal membuat user di sistem auth");
+    }
+
+    console.log("✅ Auth user created:", authData.user.id);
+
+    // Step 2: Create profile in pengguna table
+    console.log("📝 Creating pengguna profile...");
+    const penggunaData = {
+      user_id: authData.user.id,
       id_pengguna: generatedId.value,
       nama: form.nama,
       email: form.email,
-      telepon: form.telepon || undefined,
+      telepon: form.telepon || null,
       role: form.role,
-      status: form.status,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
+    const { data: profileData, error: profileError } = await supabase
+      .from("pengguna")
+      .insert([penggunaData])
+      .select()
+      .single();
+
+    if (profileError) {
+      console.error("❌ Profile creation error:", profileError);
+      // Try to cleanup auth user if profile creation fails
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw new Error("Gagal membuat profil pengguna: " + profileError.message);
+    }
+
+    console.log("✅ Pengguna profile created:", profileData);
+
+    // Transform for component response
+    const newPengguna = {
+      id: profileData.id.toString(),
+      id_pengguna: profileData.id_pengguna,
+      nama: profileData.nama,
+      email: profileData.email,
+      telepon: profileData.telepon || undefined,
+      role: profileData.role,
+      status: profileData.aktif ? "aktif" : "nonaktif",
+      created_at: profileData.created_at,
+      updated_at: profileData.updated_at,
+    };
+
+    console.log("🎉 New pengguna created successfully");
+
     // Emit success
     emit("created", newPengguna);
   } catch (error: any) {
-    console.error("Error creating pengguna:", error);
+    console.error("❌ Error creating pengguna:", error);
     submitError.value =
       error.message || "Gagal membuat pengguna. Silakan coba lagi.";
   } finally {

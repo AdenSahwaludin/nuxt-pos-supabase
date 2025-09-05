@@ -33,7 +33,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Cari berdasarkan nama, email, atau nomor HP..."
+              placeholder="Cari berdasarkan nama, email, atau telepon..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               @input="debouncedSearch"
             />
@@ -106,14 +106,19 @@
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
+                Lokasi
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Status
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                @click="sortBy('created_at')"
+                @click="sortBy('tanggal_daftar')"
               >
                 <div class="flex items-center space-x-1">
-                  <span>Dibuat</span>
+                  <span>Tgl Daftar</span>
                   <ArrowUpDown :size="14" />
                 </div>
               </th>
@@ -134,6 +139,9 @@
                 <div class="animate-pulse bg-gray-200 h-4 rounded w-32"></div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-24"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-6 rounded w-16"></div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -151,8 +159,8 @@
             <!-- Data Rows -->
             <tr
               v-else-if="pelangganList.length > 0"
-              v-for="pelanggan in pelangganList"
-              :key="pelanggan.id"
+              v-for="pelanggan in pelangganList.filter((p) => p && p.id)"
+              :key="pelanggan?.id || Math.random()"
               class="hover:bg-gray-50"
             >
               <td class="px-6 py-4 whitespace-nowrap">
@@ -164,36 +172,54 @@
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900">
-                      {{ pelanggan.nama }}
+                      {{ pelanggan?.nama || "-" }}
                     </div>
                     <div class="text-sm text-gray-500">
-                      {{ pelanggan.id_pelanggan }}
+                      {{ pelanggan?.id_pelanggan || "-" }}
                     </div>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">
-                  {{ pelanggan.no_hp || "-" }}
+                  {{ pelanggan?.telepon || "-" }}
                 </div>
                 <div class="text-sm text-gray-500">
-                  {{ pelanggan.email || "-" }}
+                  {{ pelanggan?.email || "-" }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                  :class="
-                    pelanggan.status === 'aktif'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-red-100 text-red-800'
-                  "
-                >
-                  {{ pelanggan.status }}
-                </span>
+                <div class="text-sm text-gray-900">
+                  {{ pelanggan?.kota || "-" }}
+                </div>
+                <div class="text-sm text-gray-500">
+                  {{ pelanggan?.alamat || "-" }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex flex-col space-y-1">
+                  <span
+                    class="inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit"
+                    :class="
+                      pelanggan?.aktif
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-red-100 text-red-800'
+                    "
+                  >
+                    {{ pelanggan?.aktif ? "Aktif" : "Non-Aktif" }}
+                  </span>
+                  <span
+                    v-if="pelanggan?.allow_installment"
+                    class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 w-fit"
+                  >
+                    Kredit
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(pelanggan.created_at) }}
+                {{
+                  formatDate(pelanggan?.tanggal_daftar || pelanggan?.created_at)
+                }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center space-x-2">
@@ -224,7 +250,7 @@
 
             <!-- Empty State -->
             <tr v-else>
-              <td colspan="5" class="px-6 py-12 text-center">
+              <td colspan="6" class="px-6 py-12 text-center">
                 <div class="flex flex-col items-center justify-center">
                   <div
                     class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
@@ -346,13 +372,20 @@ definePageMeta({
 
 // Types
 interface Pelanggan {
+  idx?: number;
   id: string;
   id_pelanggan: string;
   nama: string;
-  no_hp?: string;
   email?: string;
+  telepon?: string;
+  kota?: string;
   alamat?: string;
-  status: "aktif" | "nonaktif";
+  aktif: boolean;
+  tanggal_daftar: string;
+  allow_installment?: boolean;
+  credit_limit?: string;
+  max_tenor_bulan?: number;
+  trust_score?: string;
   created_at: string;
   updated_at: string;
 }
@@ -385,7 +418,7 @@ const pagination = reactive({
 
 // Sorting
 const sorting = reactive({
-  field: "created_at",
+  field: "tanggal_daftar",
   direction: "desc",
 });
 
@@ -433,10 +466,16 @@ const loadPelanggan = async () => {
         id: "1",
         id_pelanggan: "P001",
         nama: "Andi Wijaya",
-        no_hp: "081234567890",
         email: "andi.wijaya@gmail.com",
+        telepon: "081234567890",
+        kota: "Jakarta",
         alamat: "Jl. Sudirman No. 123, Jakarta",
-        status: "aktif",
+        aktif: true,
+        tanggal_daftar: "2025-01-01T00:00:00Z",
+        allow_installment: true,
+        credit_limit: "5000000",
+        max_tenor_bulan: 12,
+        trust_score: "A",
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
       },
@@ -444,10 +483,16 @@ const loadPelanggan = async () => {
         id: "2",
         id_pelanggan: "P002",
         nama: "Sari Dewi",
-        no_hp: "081234567891",
         email: "sari.dewi@gmail.com",
-        alamat: "Jl. Gatot Subroto No. 456, Jakarta",
-        status: "aktif",
+        telepon: "081234567891",
+        kota: "Bandung",
+        alamat: "Jl. Gatot Subroto No. 456, Bandung",
+        aktif: false,
+        tanggal_daftar: "2025-01-02T00:00:00Z",
+        allow_installment: false,
+        credit_limit: "2000000",
+        max_tenor_bulan: 6,
+        trust_score: "B",
         created_at: "2025-01-02T00:00:00Z",
         updated_at: "2025-01-02T00:00:00Z",
       },
@@ -494,10 +539,14 @@ const changePage = (page: number) => {
 };
 
 const getPelangganInitials = (pelanggan: Pelanggan) => {
+  if (!pelanggan) return "?";
+
   // Extract number from ID like P001 -> 001
   if (pelanggan.id_pelanggan?.startsWith("P")) {
     return pelanggan.id_pelanggan.substring(1);
   }
+
+  if (!pelanggan.nama) return "?";
 
   const names = pelanggan.nama.split(" ");
   return names.length > 1
@@ -506,11 +555,16 @@ const getPelangganInitials = (pelanggan: Pelanggan) => {
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("id-ID", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  if (!dateString) return "-";
+  try {
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch (error) {
+    return dateString;
+  }
 };
 
 const viewPelanggan = (pelanggan: Pelanggan) => {

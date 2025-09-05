@@ -253,6 +253,7 @@
 // @ts-nocheck
 import { ref, reactive, onMounted } from "vue";
 import { X, Eye, EyeOff, Edit } from "lucide-vue-next";
+import { supabase } from "~~/lib/supabaseClient";
 
 interface Props {
   pengguna: {
@@ -365,23 +366,69 @@ const handleSubmit = async () => {
   submitError.value = "";
 
   try {
-    // TODO: Implement API call to update user
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+    console.log("🔧 Updating pengguna:", props.pengguna.id_pengguna);
+
+    // Prepare update data
+    const updateData = {
+      nama: form.nama,
+      email: form.email,
+      role: form.role,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Add telepon if provided
+    if (form.telepon) {
+      updateData.telepon = form.telepon;
+    }
+
+    // Update pengguna record
+    const { data, error } = await supabase
+      .from("pengguna")
+      .update(updateData)
+      .eq("id_pengguna", props.pengguna.id_pengguna)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Error updating pengguna:", error);
+      throw new Error(`Gagal update pengguna: ${error.message}`);
+    }
+
+    console.log("✅ Pengguna updated successfully:", data);
+
+    // If changing password, update auth user
+    if (changePassword.value && form.password) {
+      console.log("🔧 Updating user password...");
+
+      // Note: In production, you'd need to handle password updates carefully
+      // This might require admin privileges or user re-authentication
+      const { error: passwordError } = await supabase.auth.admin.updateUserById(
+        data.auth_id,
+        { password: form.password }
+      );
+
+      if (passwordError) {
+        console.warn("⚠️ Password update failed:", passwordError);
+        // Don't throw error, user data was still updated
+      } else {
+        console.log("✅ Password updated successfully");
+      }
+    }
 
     const updatedPengguna = {
       ...props.pengguna,
-      nama: form.nama,
-      email: form.email,
-      telepon: form.telepon || undefined,
-      role: form.role,
-      status: form.status,
-      updated_at: new Date().toISOString(),
+      nama: data.nama,
+      email: data.email,
+      telepon: data.no_hp || undefined,
+      role: data.role,
+      status: data.status,
+      updated_at: data.updated_at,
     };
 
     // Emit success
     emit("updated", updatedPengguna);
   } catch (error: any) {
-    console.error("Error updating pengguna:", error);
+    console.error("❌ Error updating pengguna:", error);
     submitError.value =
       error.message || "Gagal memperbarui pengguna. Silakan coba lagi.";
   } finally {

@@ -62,7 +62,7 @@
             >Filter Status</label
           >
           <select
-            v-model="filters.status"
+            v-model="filters.role"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             @change="loadPengguna"
           >
@@ -179,8 +179,8 @@
             <!-- Data Rows -->
             <tr
               v-else-if="penggunaList.length > 0"
-              v-for="pengguna in penggunaList"
-              :key="pengguna.id"
+              v-for="pengguna in penggunaList.filter((p) => p && p.id)"
+              :key="pengguna?.id || Math.random()"
               class="hover:bg-gray-50"
             >
               <td class="px-6 py-4 whitespace-nowrap">
@@ -192,46 +192,48 @@
                   </div>
                   <div>
                     <div class="text-sm font-medium text-gray-900">
-                      {{ pengguna.nama }}
+                      {{ pengguna?.nama || "-" }}
                     </div>
                     <div class="text-sm text-gray-500">
-                      {{ pengguna.id_pengguna }}
+                      {{ pengguna?.id_pengguna || "-" }}
                     </div>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ pengguna.email }}</div>
+                <div class="text-sm text-gray-900">
+                  {{ pengguna?.email || "-" }}
+                </div>
                 <div class="text-sm text-gray-500">
-                  {{ pengguna.telepon || "-" }}
+                  {{ pengguna?.telepon || "-" }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                   :class="
-                    pengguna.role === 'admin'
+                    pengguna?.role === 'admin'
                       ? 'bg-purple-100 text-purple-800'
                       : 'bg-blue-100 text-blue-800'
                   "
                 >
-                  {{ pengguna.role }}
+                  {{ pengguna?.role || "unknown" }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                   :class="
-                    pengguna.status === 'aktif'
+                    pengguna?.status === 'aktif'
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-red-100 text-red-800'
                   "
                 >
-                  {{ pengguna.status }}
+                  {{ pengguna?.status || "unknown" }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(pengguna.created_at) }}
+                {{ formatDate(pengguna?.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center space-x-2">
@@ -311,7 +313,7 @@
             <template v-for="page in visiblePages" :key="page">
               <button
                 v-if="page !== '...'"
-                @click="changePage(page)"
+                @click="changePage(page as number)"
                 class="px-3 py-2 border rounded-lg text-sm"
                 :class="
                   page === pagination.currentPage
@@ -360,8 +362,9 @@
 </template>
 
 <script setup lang="ts">
+import roleMiddleware from "~/middleware/role";
+import { supabase } from "~~/lib/supabaseClient";
 // @ts-nocheck
-import { ref, reactive, computed, onMounted, watch } from "vue";
 import {
   UserPlus,
   Search,
@@ -374,10 +377,12 @@ import {
   ChevronRight,
 } from "lucide-vue-next";
 
+// Import supabase composable - auto-imported by Nuxt
+
 // Page meta
 definePageMeta({
   layout: "admin",
-  middleware: ["role"],
+  middleware: [roleMiddleware],
   auth: true,
   requiredRole: "admin",
 });
@@ -400,6 +405,7 @@ const loading = ref(false);
 const searchQuery = ref("");
 const penggunaList = ref<Pengguna[]>([]);
 const selectedPengguna = ref<Pengguna | null>(null);
+const authStore = useAuthStore();
 
 // Modal states
 const showCreateModal = ref(false);
@@ -408,8 +414,8 @@ const showDetailModal = ref(false);
 
 // Filters
 const filters = reactive({
-  role: "",
-  status: "",
+  role: "admin",
+  status: "aktif",
 });
 
 // Pagination
@@ -462,35 +468,93 @@ const visiblePages = computed(() => {
 // Methods
 const loadPengguna = async () => {
   loading.value = true;
-  try {
-    // TODO: Implement API call
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+  console.log("🔄 Loading pengguna data from database...");
 
-    // Mock data for now
-    penggunaList.value = [
-      {
-        id: "1",
-        id_pengguna: "001-ADN",
-        nama: "Admin Utama",
-        email: "admin@sbs.com",
-        telepon: "081234567890",
-        role: "admin",
-        status: "aktif",
-        created_at: "2025-01-01T00:00:00Z",
-        updated_at: "2025-01-01T00:00:00Z",
-      },
-      {
-        id: "2",
-        id_pengguna: "002-KSR",
-        nama: "Kasir Satu",
-        email: "kasir1@sbs.com",
-        telepon: "081234567891",
-        role: "kasir",
-        status: "aktif",
-        created_at: "2025-01-02T00:00:00Z",
-        updated_at: "2025-01-02T00:00:00Z",
-      },
-    ];
+  try {
+    // Query pengguna from database
+    console.log("📡 Fetching from pengguna table...");
+    const { data: penggunaData, error } = await supabase
+      .from("pengguna")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("❌ Supabase query error:", error);
+      throw error;
+    }
+
+    console.log("📝 Database data received:", penggunaData);
+
+    if (penggunaData && penggunaData.length > 0) {
+      // Transform database data to match interface
+      const transformedData: Pengguna[] = penggunaData.map((item: any) => ({
+        id: item.id_pengguna, // Use id_pengguna as the id
+        id_pengguna: item.id_pengguna,
+        nama: item.nama,
+        email: item.email,
+        telepon: item.telepon || undefined,
+        role: item.role as "admin" | "kasir",
+        status: "aktif", // Default to aktif since they exist in database
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+      }));
+
+      console.log("🔄 Transformed data:", transformedData);
+      penggunaList.value = transformedData;
+      console.log("✅ Database data assigned to penggunaList.value");
+    } else {
+      console.log("📭 No data found in database, using mock data");
+      // Fallback to mock data if database is empty
+      const mockData: Pengguna[] = [
+        {
+          id: "1",
+          id_pengguna: "001-ADN",
+          nama: "Admin Utama",
+          email: "admin@sbs.com",
+          telepon: "081234567890",
+          role: "admin" as const,
+          status: "aktif" as const,
+          created_at: "2025-01-01T00:00:00Z",
+          updated_at: "2025-01-01T00:00:00Z",
+        },
+        {
+          id: "2",
+          id_pengguna: "002-KSR",
+          nama: "Kasir Satu",
+          email: "kasir1@sbs.com",
+          telepon: "081234567891",
+          role: "kasir" as const,
+          status: "aktif" as const,
+          created_at: "2025-01-02T00:00:00Z",
+          updated_at: "2025-01-02T00:00:00Z",
+        },
+      ];
+      penggunaList.value = mockData;
+      console.log("� Mock data assigned as fallback");
+    }
+
+    // Apply filters if any
+    if (filters.role || filters.status) {
+      console.log("🔍 Applying filters:", filters);
+      penggunaList.value = penggunaList.value.filter((pengguna) => {
+        const roleMatch = !filters.role || pengguna.role === filters.role;
+        const statusMatch =
+          !filters.status || pengguna.status === filters.status;
+        return roleMatch && statusMatch;
+      });
+    }
+
+    // Apply search if any
+    if (searchQuery.value.trim()) {
+      console.log("🔍 Applying search:", searchQuery.value);
+      const query = searchQuery.value.toLowerCase();
+      penggunaList.value = penggunaList.value.filter(
+        (pengguna) =>
+          pengguna.nama?.toLowerCase().includes(query) ||
+          pengguna.email?.toLowerCase().includes(query) ||
+          pengguna.id_pengguna?.toLowerCase().includes(query)
+      );
+    }
 
     pagination.total = penggunaList.value.length;
     pagination.totalPages = Math.ceil(pagination.total / pagination.perPage);
@@ -502,18 +566,32 @@ const loadPengguna = async () => {
       pagination.currentPage * pagination.perPage,
       pagination.total
     );
+
+    console.log("📊 Pagination updated:", {
+      total: pagination.total,
+      currentPage: pagination.currentPage,
+      totalPages: pagination.totalPages,
+    });
   } catch (error) {
-    console.error("Error loading pengguna:", error);
-    window.$toast?.error("Gagal memuat data pengguna");
+    console.error("❌ Error loading pengguna:", error);
+    if (typeof window !== "undefined" && (window as any).$toast) {
+      (window as any).$toast.error(
+        "Gagal memuat data pengguna: " + (error as Error).message
+      );
+    }
+
+    // Fallback to empty array on error
+    penggunaList.value = [];
   } finally {
     loading.value = false;
+    console.log("🏁 Loading completed");
   }
 };
 
-const debouncedSearch = useDebounceFn(() => {
+const debouncedSearch = () => {
   pagination.currentPage = 1;
   loadPengguna();
-}, 300);
+};
 
 const sortBy = (field: string) => {
   if (sorting.field === field) {
@@ -533,23 +611,35 @@ const changePage = (page: number) => {
 };
 
 const getPenggunaInitials = (pengguna: Pengguna) => {
+  if (!pengguna) return "?";
+
   if (pengguna.id_pengguna) {
     const parts = pengguna.id_pengguna.split("-");
-    return parts.length > 1 ? parts[1] : pengguna.nama.charAt(0).toUpperCase();
+    return parts.length > 1
+      ? parts[1]
+      : pengguna.nama?.charAt(0).toUpperCase() || "?";
   }
 
+  if (!pengguna.nama) return "?";
+
   const names = pengguna.nama.split(" ");
-  return names.length > 1
-    ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
-    : names[0].charAt(0).toUpperCase();
+  if (names.length > 1 && names[0] && names[1]) {
+    return (names[0].charAt(0) + names[1].charAt(0)).toUpperCase();
+  }
+  return names[0]?.charAt(0).toUpperCase() || "?";
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("id-ID", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "-";
+  try {
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch (error) {
+    return dateString;
+  }
 };
 
 const viewPengguna = (pengguna: Pengguna) => {
@@ -568,39 +658,49 @@ const deletePengguna = async (pengguna: Pengguna) => {
     confirm(`Apakah Anda yakin ingin menghapus pengguna "${pengguna.nama}"?`)
   ) {
     try {
-      // TODO: Implement delete API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log("🗑️ Deleting pengguna:", pengguna.id_pengguna);
 
-      // Remove from list
-      const index = penggunaList.value.findIndex((p) => p.id === pengguna.id);
-      if (index !== -1) {
-        penggunaList.value.splice(index, 1);
+      // Delete from pengguna table
+      const { error } = await supabase
+        .from("pengguna")
+        .delete()
+        .eq("id_pengguna", pengguna.id_pengguna);
+
+      if (error) {
+        console.error("❌ Error deleting pengguna:", error);
+        throw new Error(`Gagal hapus pengguna: ${error.message}`);
       }
 
-      window.$toast?.success("Pengguna berhasil dihapus");
-      loadPengguna(); // Reload to update pagination
-    } catch (error) {
-      console.error("Error deleting pengguna:", error);
-      window.$toast?.error("Gagal menghapus pengguna");
+      console.log("✅ Pengguna deleted successfully");
+
+      alert("Pengguna berhasil dihapus");
+      loadPengguna(); // Reload to update data
+    } catch (error: any) {
+      console.error("❌ Error deleting pengguna:", error);
+      alert(`Gagal menghapus pengguna: ${error.message}`);
     }
   }
 };
 
 const handlePenggunaCreated = (newPengguna: Pengguna) => {
   showCreateModal.value = false;
-  window.$toast?.success("Pengguna berhasil dibuat");
+  alert("Pengguna berhasil dibuat");
   loadPengguna();
 };
 
 const handlePenggunaUpdated = (updatedPengguna: Pengguna) => {
   showEditModal.value = false;
   selectedPengguna.value = null;
-  window.$toast?.success("Pengguna berhasil diperbarui");
+  alert("Pengguna berhasil diperbarui");
   loadPengguna();
 };
 
 // Lifecycle
 onMounted(() => {
+  console.log("🔧 Pengguna page mounted");
+  console.log("👤 Auth store user:", !!authStore?.user);
+  console.log("👤 Auth store profile:", authStore?.profile);
+  console.log("👤 Auth store role:", authStore?.profile?.role);
   loadPengguna();
 });
 
