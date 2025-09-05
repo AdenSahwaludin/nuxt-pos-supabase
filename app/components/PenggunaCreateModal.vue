@@ -475,7 +475,7 @@ const handleSubmit = async () => {
 
     // Transform for component response
     const newPengguna = {
-      id: profileData.id.toString(),
+      id: profileData.id_pengguna,
       id_pengguna: profileData.id_pengguna,
       nama: profileData.nama,
       email: profileData.email,

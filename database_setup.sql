@@ -1,146 +1,159 @@
--- SBS Database Setup Script for Supabase
--- Run this script in your Supabase SQL Editor
+-- pastikan schema sbs ada
+create schema if not exists sbs;
 
--- 1. Create schema
-CREATE SCHEMA IF NOT EXISTS sbs;
-SET search_path TO sbs, public;
+set search_path to sbs, public;
+create type user_role as enum ('admin','kasir');
+create type trx_status as enum ('menunggu','selesai','dibatalkan');
+create type pay_method as enum ('tunai','non_tunai','cicilan');
+create type ar_status as enum ('aktif','lunas','tunggakan','gagal');
 
--- 2. Create enum types
-CREATE TYPE sbs.user_role AS ENUM ('admin','kasir');
-CREATE TYPE sbs.trx_status AS ENUM ('menunggu','selesai','dibatalkan');
-CREATE TYPE sbs.pay_method AS ENUM ('tunai','non_tunai');
-CREATE TYPE sbs.ar_status AS ENUM ('aktif','lunas','tunggakan','gagal');
-CREATE TYPE sbs.reminder_channel AS ENUM ('wa','sms','telp','email','lainnya');
-CREATE TYPE sbs.yesno AS ENUM ('Y','N');
+--BATAS
 
--- 3. Create pengguna table
-CREATE TABLE IF NOT EXISTS sbs.pengguna (
-  id_pengguna CHAR(7) PRIMARY KEY,
-  nama VARCHAR(100) NOT NULL,
-  email VARCHAR(50) UNIQUE,
-  telepon VARCHAR(20),
-  kata_sandi CHAR(60), -- Legacy field, NOT used for auth
-  role sbs.user_role NOT NULL DEFAULT 'kasir',
-  terakhir_login TIMESTAMPTZ,
-  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT ck_id_pengguna_format CHECK (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$')
+create table if not exists pengguna (
+id_pengguna char(7) primary key check (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$'),
+nama varchar(100) not null,
+email varchar(50) unique,
+telepon varchar(20),
+kata_sandi char(60), -- legacy
+user_id uuid unique references auth.users(id) on delete cascade,
+role user_role not null default 'kasir',
+terakhir_login timestamptz,
+created_at timestamptz default now(),
+updated_at timestamptz default now()
 );
 
--- 4. Create pelanggan table
-CREATE TABLE IF NOT EXISTS sbs.pelanggan (
-  id_pelanggan VARCHAR(4) PRIMARY KEY,
-  nama VARCHAR(100) NOT NULL,
-  email VARCHAR(50) UNIQUE,
-  telepon VARCHAR(20),
-  kota VARCHAR(50),
-  alamat TEXT,
-  status sbs.yesno NOT NULL DEFAULT 'Y',
-  tanggal_daftar DATE DEFAULT CURRENT_DATE,
-  allow_installment BOOLEAN NOT NULL DEFAULT false,
-  credit_limit NUMERIC(12,2) NOT NULL DEFAULT 0,
-  max_tenor_bulan SMALLINT NOT NULL DEFAULT 0,
-  trust_score NUMERIC(5,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT ck_id_pelanggan_format CHECK (id_pelanggan ~ '^P[0-9]{3}$')
+--BATAS
+
+create table if not exists pelanggan (
+id_pelanggan varchar(4) primary key check (id_pelanggan ~ '^P[0-9]{3}$'),
+nama varchar(100) not null,
+email varchar(50) unique,
+telepon varchar(20), kota varchar(50), alamat text,
+aktif boolean not null default true,
+tanggal_daftar date default current_date,
+allow_installment boolean not null default false,
+credit_limit numeric(12,2) not null default 0.00,
+max_tenor_bulan smallint not null default 0,
+trust_score numeric(5,2) not null default 0,
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
 
--- 5. Create kategori table
-CREATE TABLE IF NOT EXISTS sbs.kategori (
-  id_kategori SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nama VARCHAR(100) NOT NULL
+--BATAS
+
+create table if not exists produk (
+id_produk char(13) primary key,
+kategori varchar(100) not null,
+nama varchar(100) not null,
+gambar varchar(255), nomor_bpom varchar(50),
+harga numeric(12,2) not null check (harga >= 0),
+biaya_produk numeric(12,2) not null default 0 check (biaya_produk >= 0),
+stok integer not null default 0, batas_stok integer not null default 0,
+-- pricing pack & tier (tanpa tabel tambahan)
+unit varchar(20) default 'pcs',
+pack_unit varchar(20) default 'karton',
+pack_size int not null default 1, -- isi per karton (mis. 144)
+harga_pack numeric(12,2), -- harga per karton (total)
+qty_tier1 int, harga_tier1 numeric(12,2), -- tier pcs: min qty & harga/pcs
+harga_tier_qty int, -- ambang karton untuk tier pack (opsional)
+harga_tier_pack numeric(12,2), -- harga per karton khusus jika >= ambang
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_produk_kategori on produk(kategori);
 
--- 6. Create produk table
-CREATE TABLE IF NOT EXISTS sbs.produk (
-  id_produk CHAR(13) PRIMARY KEY,
-  id_kategori SMALLINT NOT NULL REFERENCES sbs.kategori(id_kategori),
-  nama VARCHAR(100) NOT NULL,
-  gambar VARCHAR(255),
-  nomor_bpom VARCHAR(50),
-  harga NUMERIC(12,2) NOT NULL CHECK (harga >= 0),
-  biaya_produk NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (biaya_produk >= 0),
-  stok INTEGER NOT NULL DEFAULT 0,
-  batas_stok INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+--BATAS
+
+create table if not exists transaksi (
+id_transaksi varchar(28) primary key,
+id_pengguna char(7) not null references pengguna(id_pengguna),
+id_pelanggan varchar(4) not null references pelanggan(id_pelanggan),
+tanggal timestamptz not null default now(),
+status trx_status not null default 'menunggu',
+total numeric(12,2) not null check (total >= 0),
+diskon numeric(12,2) check (diskon is null or diskon >= 0),
+pajak numeric(12,2) check (pajak is null or pajak >= 0),
+biaya_pengiriman numeric(12,2) default 0 check (biaya_pengiriman >= 0),
+is_credit boolean not null default false,
+dp_amount numeric(12,2) default 0 check (dp_amount >= 0),
+tenor_bulan smallint, due_date date,
+outstanding numeric(12,2) default 0 check (outstanding >= 0),
+ar_status ar_status,
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_transaksi_tanggal on transaksi(tanggal);
+create index if not exists idx_transaksi_pelanggan on transaksi(id_pelanggan);
 
--- 7. Create transaksi table
-CREATE TABLE IF NOT EXISTS sbs.transaksi (
-  id_transaksi VARCHAR(28) PRIMARY KEY,
-  id_pengguna CHAR(7) NOT NULL REFERENCES sbs.pengguna(id_pengguna),
-  id_pelanggan VARCHAR(4) NOT NULL REFERENCES sbs.pelanggan(id_pelanggan),
-  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  total NUMERIC(12,2) NOT NULL CHECK (total >= 0),
-  status sbs.trx_status NOT NULL DEFAULT 'menunggu',
-  catatan TEXT,
-  diskon NUMERIC(12,2) CHECK (diskon IS NULL OR diskon >= 0),
-  pajak NUMERIC(12,2) CHECK (pajak IS NULL OR pajak >= 0),
-  biaya_pengiriman NUMERIC(12,2) DEFAULT 0 CHECK (biaya_pengiriman >= 0),
-  tipe_pembayaran sbs.pay_method,
-  is_credit BOOLEAN NOT NULL DEFAULT false,
-  dp_amount NUMERIC(12,2) DEFAULT 0 CHECK (dp_amount >= 0),
-  due_date DATE,
-  outstanding NUMERIC(12,2) DEFAULT 0 CHECK (outstanding >= 0),
-  ar_status sbs.ar_status,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+--BATAS
+
+create table if not exists transaksi_detail (
+id_detail bigserial primary key,
+id_transaksi varchar(28) not null references transaksi(id_transaksi) on delete cascade,
+id_produk char(13) not null references produk(id_produk),
+jumlah integer not null check (jumlah > 0),
+harga_satuan numeric(12,2) not null check (harga_satuan >= 0),
+subtotal numeric(14,2) generated always as ((jumlah::numeric * harga_satuan)) stored
 );
+create index if not exists idx_trx_detail_trx on transaksi_detail(id_transaksi);
+create index if not exists idx_trx_detail_produk on transaksi_detail(id_produk);
 
--- 8. Create transaksi_detail table
-CREATE TABLE IF NOT EXISTS sbs.transaksi_detail (
-  id_detail BIGSERIAL PRIMARY KEY,
-  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi) ON DELETE CASCADE,
-  id_produk CHAR(13) NOT NULL REFERENCES sbs.produk(id_produk),
-  jumlah INTEGER NOT NULL CHECK (jumlah > 0),
-  harga_satuan NUMERIC(12,2) NOT NULL CHECK (harga_satuan >= 0),
-  subtotal GENERATED ALWAYS AS (jumlah * harga_satuan) STORED
+--BATAS
+
+create table if not exists piutang (
+id_piutang varchar(30) primary key,
+id_transaksi varchar(28) not null unique references transaksi(id_transaksi) on delete cascade,
+id_pelanggan varchar(4) not null references pelanggan(id_pelanggan),
+tenor_bulan smallint not null check (tenor_bulan > 0),
+dp_amount numeric(12,2) not null default 0 check (dp_amount >= 0),
+principal numeric(12,2) not null check (principal >= 0),
+bunga_persen numeric(5,2) not null default 0 check (bunga_persen >= 0),
+total_tagihan numeric(12,2) not null check (total_tagihan >= 0),
+outstanding numeric(12,2) not null check (outstanding >= 0),
+start_date date not null default current_date, end_date date,
+jadwal jsonb not null check (jsonb_typeof(jadwal)='array'), -- [{termin_ke,due_date,amount_due,amount_paid,paid_date,denda,status}]
+status ar_status not null default 'aktif',
+approved_by char(7) references pengguna(id_pengguna),
+created_at timestamptz default now(), updated_at timestamptz default now()
 );
+create index if not exists idx_piutang_pelanggan on piutang(id_pelanggan);
+create index if not exists idx_piutang_status on piutang(status);
 
--- 9. Create pembayaran table
-CREATE TABLE IF NOT EXISTS sbs.pembayaran (
-  id_pembayaran CHAR(20) PRIMARY KEY,
-  id_transaksi VARCHAR(28) NOT NULL REFERENCES sbs.transaksi(id_transaksi),
-  metode sbs.pay_method NOT NULL,
-  jumlah NUMERIC(12,2) NOT NULL CHECK (jumlah > 0),
-  keterangan VARCHAR(255),
-  tanggal TIMESTAMPTZ NOT NULL DEFAULT NOW()
+--BATAS
+
+create table if not exists pembayaran (
+id_pembayaran char(20) primary key,
+id_transaksi varchar(28) not null references transaksi(id_transaksi),
+metode pay_method not null,
+jumlah numeric(12,2) not null check (jumlah > 0),
+tanggal timestamptz not null default now(),
+keterangan varchar(255),
+id_piutang varchar(30) references piutang(id_piutang),
+termin_ke smallint
 );
+create index if not exists idx_pembayaran_trx on pembayaran(id_transaksi);
+create index if not exists idx_pembayaran_piutang on pembayaran(id_piutang);
+create index if not exists idx_pembayaran_tanggal on pembayaran(tanggal);
 
--- 10. Enable RLS
-ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.pelanggan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.kategori ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.produk ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.transaksi ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.transaksi_detail ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sbs.pembayaran ENABLE ROW LEVEL SECURITY;
+--BATAS
 
--- 11. Create RLS policies
--- Read policies (basic authentication required)
-CREATE POLICY sbs_read_all_pengguna ON sbs.pengguna
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+alter table pengguna enable row level security;
+alter table pelanggan enable row level security;
+alter table produk enable row level security;
+alter table transaksi enable row level security;
+alter table transaksi_detail enable row level security;
+alter table piutang enable row level security;
+alter table pembayaran enable row level security;
 
-CREATE POLICY sbs_read_all_pelanggan ON sbs.pelanggan 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY sbs_read_all_kategori ON sbs.kategori 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+create or replace view sbs_pengguna_view as select p.* from pengguna p where p.user_id = auth.uid();
 
-CREATE POLICY sbs_read_all_produk ON sbs.produk 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY sbs_read_all_transaksi ON sbs.transaksi 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+create policy r_all_pengguna on pengguna for select using (auth.uid() is not null);
+create policy r_all_pelanggan on pelanggan for select using (auth.uid() is not null);
+create policy r_all_produk on produk for select using (auth.uid() is not null);
+create policy r_all_trx on transaksi for select using (auth.uid() is not null);
+create policy r_all_detail on transaksi_detail for select using (auth.uid() is not null);
+create policy r_all_piutang on piutang for select using (auth.uid() is not null);
+create policy r_all_bayar on pembayaran for select using (auth.uid() is not null);
 
-CREATE POLICY sbs_read_all_detail ON sbs.transaksi_detail 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY sbs_read_all_pembayaran ON sbs.pembayaran 
-  FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Write policies for admin
 CREATE POLICY sbs_write_admin_produk ON sbs.produk
@@ -157,52 +170,293 @@ CREATE POLICY sbs_write_admin_produk ON sbs.produk
     )
   );
 
--- Cashier permissions for transactions
-CREATE POLICY sbs_kasir_insert_transaksi ON sbs.transaksi
-  FOR INSERT WITH CHECK (
+-- Admin policies for pengguna table
+CREATE POLICY sbs_admin_update_pengguna ON sbs.pengguna
+  FOR UPDATE USING (
     EXISTS (
       SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
-CREATE POLICY sbs_kasir_insert_pembayaran ON sbs.pembayaran
+CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
   FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM sbs.pengguna 
-      WHERE user_id = auth.uid() AND role IN ('kasir','admin')
+      WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
 
--- 12. Insert sample data
-INSERT INTO sbs.kategori (nama) VALUES 
-('Umum'), 
-('Elektronik'), 
-('Sparepart'),
-('Konsumsi'),
-('Perawatan');
+CREATE POLICY sbs_admin_delete_pengguna ON sbs.pengguna
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
 
-INSERT INTO sbs.pelanggan (id_pelanggan, nama, email, telepon, allow_installment, credit_limit, trust_score) VALUES 
-('P001', 'Andi Wijaya', 'andi@example.com', '081234567890', true, 5000000, 85.5),
-('P002', 'Budi Santoso', 'budi@example.com', '081234567891', false, 0, 45.0),
-('P003', 'Citra Dewi', 'citra@example.com', '081234567892', true, 2000000, 72.3);
+-- Admin policies for pelanggan table  
+CREATE POLICY sbs_admin_write_pelanggan ON sbs.pelanggan
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+create policy w_kasir_trx on transaksi for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
+create policy w_kasir_bayar on pembayaran for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
 
-INSERT INTO sbs.produk (id_produk, id_kategori, nama, harga, biaya_produk, stok, batas_stok) VALUES
-('8999999999999', 1, 'Produk Contoh 1', 50000, 35000, 100, 10),
-('8888888888888', 2, 'Elektronik Sample', 120000, 90000, 50, 5),
-('7777777777777', 3, 'Sparepart ABC', 75000, 50000, 25, 3);
+-- UPDATE sbs.pengguna 
+-- SET user_id = '6f48b5b4-b01b-4668-9f8b-71b720ed2c71' 
+-- WHERE id_pengguna = '001-ADN';
+-- Tabel schema sbs
+create or replace function public.list_tables(schema_name text default 'sbs')
+returns table(table_name text)
+language sql
+security definer
+set search_path = public
+as $$
+  select table_name
+  from information_schema.tables
+  where table_schema = schema_name
+    and table_type = 'BASE TABLE'
+  order by table_name;
+$$;
 
--- 13. Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_produk_kategori ON sbs.produk(id_kategori);
-CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON sbs.transaksi(tanggal);
-CREATE INDEX IF NOT EXISTS idx_transaksi_pelanggan ON sbs.transaksi(id_pelanggan);
-CREATE INDEX IF NOT EXISTS idx_trx_detail_trx ON sbs.transaksi_detail(id_transaksi);
-CREATE INDEX IF NOT EXISTS idx_trx_detail_produk ON sbs.transaksi_detail(id_produk);
-CREATE INDEX IF NOT EXISTS idx_pembayaran_trx ON sbs.pembayaran(id_transaksi);
-CREATE INDEX IF NOT EXISTS idx_pembayaran_tanggal ON sbs.pembayaran(tanggal);
+create or replace function public.list_columns(schema_name text default 'sbs')
+returns table(
+  table_name text,
+  column_name text,
+  data_type text,
+  is_nullable text,
+  column_default text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select table_name, column_name, data_type, is_nullable, column_default
+  from information_schema.columns
+  where table_schema = schema_name
+  order by table_name, ordinal_position;
+$$;
 
--- 14. Note: After creating users in Supabase Auth, you need to manually insert their profile data
--- Example:
--- INSERT INTO sbs.pengguna (id_pengguna, nama, email, role, user_id) VALUES
--- ('001-ADM', 'Admin Toko', 'admin@example.com', 'admin', '[AUTH_USER_ID]'),
--- ('002-KSR', 'Kasir 1', 'kasir@example.com', 'kasir', '[AUTH_USER_ID]');
+-- izinkan dipanggil dari client
+grant execute on function public.list_tables(text)  to anon, authenticated;
+grant execute on function public.list_columns(text) to anon, authenticated;
+
+alter database postgres set "supabase.rest.schema" = 'public,sbs';
+
+-- view di schema public, expose ke REST by default
+create or replace view public.v_pengguna as
+  select
+    id_pengguna, nama, email, telepon, role, terakhir_login, created_at, updated_at
+  from sbs.pengguna;
+
+-- izinkan dibaca dari client
+grant select on public.v_pengguna to anon, authenticated;
+
+--Pisah kategori
+
+-- =========================================
+-- 1) MASTER KATEGORI (baru)
+-- =========================================
+create table if not exists sbs.kategori (
+  id_kategori smallint generated always as identity primary key,
+  nama varchar(100) not null unique,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- akses API (kalau perlu)
+grant usage on schema sbs to anon, authenticated;
+grant select on all tables in schema sbs to anon, authenticated;
+grant usage, select on all sequences in schema sbs to anon, authenticated;
+
+alter table sbs.kategori enable row level security;
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies where schemaname='sbs' and tablename='kategori' and policyname='r_kategori_read'
+  ) then
+    create policy r_kategori_read on sbs.kategori
+      for select to anon, authenticated using (true);
+  end if;
+end $$;
+
+-- =========================================
+-- 2) TAMBAH KOLOM FK DI PRODUK
+-- =========================================
+do $$
+begin
+  -- tambahkan kolom id_kategori kalau belum ada
+  if not exists (
+    select 1 from information_schema.columns 
+    where table_schema='sbs' and table_name='produk' and column_name='id_kategori'
+  ) then
+    alter table sbs.produk add column id_kategori smallint;
+  end if;
+end $$;
+
+-- =========================================
+-- 3) SEED TABEL KATEGORI DARI KOLOM LAMA PRODUK.kategori
+-- =========================================
+-- (insert distinct kategori lama -> sbs.kategori)
+insert into sbs.kategori (nama)
+select distinct p.kategori
+from sbs.produk p
+where p.kategori is not null
+  and not exists (
+    select 1 from sbs.kategori k where k.nama = p.kategori
+  );
+
+-- map id_kategori sesuai nama kategori lama
+update sbs.produk p
+set id_kategori = k.id_kategori
+from sbs.kategori k
+where p.kategori is not null
+  and k.nama = p.kategori
+  and (p.id_kategori is null or p.id_kategori <> k.id_kategori);
+
+-- =========================================
+-- 4) KUNCIIN: NOT NULL + FOREIGN KEY, INDEX
+-- =========================================
+-- pastikan semua baris sudah terisi
+-- (kalau masih ada null, berarti ada produk tanpa kategori; assign default dulu sebelum langkah ini)
+alter table sbs.produk
+  alter column id_kategori set not null;
+
+-- tambahkan FK (kalau belum ada)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where table_schema='sbs' and table_name='produk' and constraint_name='produk_id_kategori_fkey'
+  ) then
+    alter table sbs.produk
+      add constraint produk_id_kategori_fkey
+      foreign key (id_kategori) references sbs.kategori(id_kategori);
+  end if;
+end $$;
+
+-- index untuk query cepat
+create index if not exists idx_produk_id_kategori on sbs.produk(id_kategori);
+
+-- =========================================
+-- 5) BERSIHIN KOLOM LAMA
+-- =========================================
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns 
+    where table_schema='sbs' and table_name='produk' and column_name='kategori'
+  ) then
+    alter table sbs.produk drop column kategori;
+  end if;
+end $$;
+
+
+--DISABLE RLS
+
+-- 1) Matikan RLS untuk semua tabel biasa (relkind='r') di schema sbs
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT n.nspname AS schema, c.relname AS tbl
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'sbs'
+      AND c.relkind = 'r'         -- only ordinary tables
+  LOOP
+    EXECUTE format('ALTER TABLE %I.%I DISABLE ROW LEVEL SECURITY;', r.schema, r.tbl);
+    EXECUTE format('ALTER TABLE %I.%I NO FORCE ROW LEVEL SECURITY;', r.schema, r.tbl);
+  END LOOP;
+END $$;
+
+-- 2) Cek statusnya
+SELECT n.nspname AS schema, c.relname AS table_name,
+       c.relrowsecurity AS rls_enabled,
+       c.relforcerowsecurity AS rls_forced
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'sbs' AND c.relkind='r'
+ORDER BY table_name;
+
+--Policy
+-- Fix pengguna table permissions for UPDATE operations
+-- Run this in your Supabase SQL Editor
+
+-- Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS sbs_admin_update_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_insert_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_delete_pengguna ON sbs.pengguna;
+
+-- Create comprehensive admin policies for pengguna table
+-- Admin can UPDATE any pengguna record
+CREATE POLICY sbs_admin_update_pengguna ON sbs.pengguna
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin can INSERT new pengguna records
+CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin can DELETE pengguna records
+CREATE POLICY sbs_admin_delete_pengguna ON sbs.pengguna
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Also add policies for pelanggan table management (admin needs this too)
+DROP POLICY IF EXISTS sbs_admin_write_pelanggan ON sbs.pelanggan;
+
+CREATE POLICY sbs_admin_write_pelanggan ON sbs.pelanggan
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Verify the policies are created
+SELECT schemaname, tablename, policyname, cmd, qual, with_check
+FROM pg_policies 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna'
+ORDER BY tablename, policyname;
