@@ -2,7 +2,7 @@
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+      class="fixed inset-0 modal-backdrop transition-opacity"
       @click="$emit('close')"
     ></div>
 
@@ -245,6 +245,7 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { X, User, Settings, Clock, Copy, Edit } from "lucide-vue-next";
+import { onMounted, onBeforeUnmount } from "vue";
 
 interface Props {
   pengguna: {
@@ -302,6 +303,15 @@ const copyToClipboard = async (text: string) => {
     window.$toast?.error("Gagal menyalin ke clipboard");
   }
 };
+
+// Lifecycle
+onMounted(() => {
+  document.body.style.overflow = "hidden";
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
+});
 </script>
 
 <style scoped>

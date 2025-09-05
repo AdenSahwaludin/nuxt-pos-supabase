@@ -2,7 +2,7 @@
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+      class="fixed inset-0 modal-backdrop transition-opacity"
       @click="$emit('close')"
     ></div>
 
@@ -251,7 +251,7 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, onBeforeUnmount } from "vue";
 import { X, Eye, EyeOff, Edit } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
 
@@ -396,16 +396,19 @@ const handleSubmit = async () => {
 
     console.log("✅ Pengguna updated successfully:", data);
 
-    // If changing password, update auth user
+    // If changing password, update password hash in database
     if (changePassword.value && form.password) {
       console.log("🔧 Updating user password...");
 
-      // Note: In production, you'd need to handle password updates carefully
-      // This might require admin privileges or user re-authentication
-      const { error: passwordError } = await supabase.auth.admin.updateUserById(
-        data.auth_id,
-        { password: form.password }
-      );
+      // Hash the password using bcrypt (you'll need to install bcryptjs)
+      const bcrypt = await import("bcryptjs");
+      const hashedPassword = await bcrypt.hash(form.password, 12);
+
+      // Update password hash in pengguna table
+      const { error: passwordError } = await supabase
+        .from("pengguna")
+        .update({ kata_sandi: hashedPassword })
+        .eq("id_pengguna", props.pengguna.id_pengguna);
 
       if (passwordError) {
         console.warn("⚠️ Password update failed:", passwordError);
@@ -438,7 +441,12 @@ const handleSubmit = async () => {
 
 // Lifecycle
 onMounted(() => {
+  document.body.style.overflow = "hidden";
   loadFormData();
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
 });
 </script>
 

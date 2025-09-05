@@ -2,7 +2,7 @@
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+      class="fixed inset-0 modal-backdrop transition-opacity"
       @click="$emit('close')"
     ></div>
 
@@ -267,7 +267,14 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import {
+  ref,
+  reactive,
+  computed,
+  onMounted,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 import { X, Eye, EyeOff, UserPlus } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
 
@@ -509,7 +516,12 @@ watch(
 
 // Lifecycle
 onMounted(() => {
+  document.body.style.overflow = "hidden";
   getNextNumber();
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
 });
 </script>
 

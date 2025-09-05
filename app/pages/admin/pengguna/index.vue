@@ -376,6 +376,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-vue-next";
+import { watch } from "vue";
 
 // Import supabase composable - auto-imported by Nuxt
 
@@ -411,6 +412,14 @@ const authStore = useAuthStore();
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
+
+// Prevent background scroll when modals open
+watch(
+  [showCreateModal, showEditModal, showDetailModal],
+  ([create, edit, detail]) => {
+    document.body.style.overflow = create || edit || detail ? "hidden" : "";
+  }
+);
 
 // Filters
 const filters = reactive({
@@ -710,6 +719,13 @@ watch(searchQuery, () => {
 });
 </script>
 
+<style>
+/* Modal backdrop */
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+</style>
+
 <style scoped>
 /* Table hover effects */
 tbody tr:hover {
@@ -736,5 +752,10 @@ tbody tr:hover {
   transition-property: color, background-color, border-color;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 </style>
