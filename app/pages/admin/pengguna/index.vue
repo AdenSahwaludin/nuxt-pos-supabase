@@ -583,9 +583,12 @@ const loadPengguna = async () => {
     });
   } catch (error) {
     console.error("❌ Error loading pengguna:", error);
+    
+    // Show error toast
     if (typeof window !== "undefined" && (window as any).$toast) {
       (window as any).$toast.error(
-        "Gagal memuat data pengguna: " + (error as Error).message
+        "Gagal memuat data pengguna: " + (error as Error).message,
+        "Gagal Memuat Data"
       );
     }
 
@@ -682,25 +685,55 @@ const deletePengguna = async (pengguna: Pengguna) => {
 
       console.log("✅ Pengguna deleted successfully");
 
-      alert("Pengguna berhasil dihapus");
+      // Show success toast
+      if (typeof window !== "undefined" && (window as any).$toast) {
+        (window as any).$toast.success(
+          `Pengguna "${pengguna.nama}" berhasil dihapus`,
+          "Berhasil Menghapus"
+        );
+      }
+      
       loadPengguna(); // Reload to update data
     } catch (error: any) {
       console.error("❌ Error deleting pengguna:", error);
-      alert(`Gagal menghapus pengguna: ${error.message}`);
+      
+      // Show error toast
+      if (typeof window !== "undefined" && (window as any).$toast) {
+        (window as any).$toast.error(
+          `Gagal menghapus pengguna: ${error.message}`,
+          "Gagal Menghapus"
+        );
+      }
     }
   }
 };
 
 const handlePenggunaCreated = (newPengguna: Pengguna) => {
   showCreateModal.value = false;
-  alert("Pengguna berhasil dibuat");
+  
+  // Show success toast
+  if (typeof window !== "undefined" && (window as any).$toast) {
+    (window as any).$toast.success(
+      `Pengguna "${newPengguna.nama}" berhasil dibuat`,
+      "Berhasil Menambah"
+    );
+  }
+  
   loadPengguna();
 };
 
 const handlePenggunaUpdated = (updatedPengguna: Pengguna) => {
   showEditModal.value = false;
   selectedPengguna.value = null;
-  alert("Pengguna berhasil diperbarui");
+  
+  // Show success toast
+  if (typeof window !== "undefined" && (window as any).$toast) {
+    (window as any).$toast.success(
+      `Pengguna "${updatedPengguna.nama}" berhasil diperbarui`,
+      "Berhasil Mengubah"
+    );
+  }
+  
   loadPengguna();
 };
 
