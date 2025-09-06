@@ -499,7 +499,7 @@ const handleSubmit = async () => {
     emit("created", newPengguna);
   } catch (error: any) {
     console.error("❌ Error creating pengguna:", error);
-    
+
     // Show error toast
     if (typeof window !== "undefined" && (window as any).$toast) {
       (window as any).$toast.error(
@@ -507,7 +507,7 @@ const handleSubmit = async () => {
         "Gagal Membuat Pengguna"
       );
     }
-    
+
     submitError.value =
       error.message || "Gagal membuat pengguna. Silakan coba lagi.";
   } finally {

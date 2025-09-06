@@ -412,7 +412,7 @@ const handleSubmit = async () => {
 
       if (passwordError) {
         console.warn("⚠️ Password update failed:", passwordError);
-        
+
         // Show warning toast for password update failure
         if (typeof window !== "undefined" && (window as any).$toast) {
           (window as any).$toast.warning(
@@ -422,7 +422,7 @@ const handleSubmit = async () => {
         }
       } else {
         console.log("✅ Password updated successfully");
-        
+
         // Show success toast for password update
         if (typeof window !== "undefined" && (window as any).$toast) {
           (window as any).$toast.success(
@@ -447,7 +447,7 @@ const handleSubmit = async () => {
     emit("updated", updatedPengguna);
   } catch (error: any) {
     console.error("❌ Error updating pengguna:", error);
-    
+
     // Show error toast
     if (typeof window !== "undefined" && (window as any).$toast) {
       (window as any).$toast.error(
@@ -455,7 +455,7 @@ const handleSubmit = async () => {
         "Gagal Memperbarui Pengguna"
       );
     }
-    
+
     submitError.value =
       error.message || "Gagal memperbarui pengguna. Silakan coba lagi.";
   } finally {

@@ -5,7 +5,8 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="max-w-sm bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+          :data-toast-id="toast.id"
+          class="max-w-sm bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative"
           :class="getToastClasses(toast.type)"
         >
           <div class="p-4">
@@ -55,13 +56,16 @@
           </div>
 
           <!-- Progress Bar -->
-          <div v-if="toast.duration > 0" class="h-1 bg-gray-200">
+          <div
+            v-if="toast.duration > 0"
+            class="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden"
+          >
             <div
-              class="h-full transition-all ease-linear"
+              class="h-full transition-all ease-linear rounded-b-lg"
               :class="getProgressClasses(toast.type)"
               :style="{
                 width: `${(toast.remainingTime / toast.duration) * 100}%`,
-                transitionDuration: `${toast.remainingTime}ms`,
+                transitionDuration: `50ms`,
               }"
             ></div>
           </div>
@@ -111,14 +115,30 @@ const removeToast = (id: string) => {
 };
 
 const startCountdown = (toast: Toast) => {
-  const interval = setInterval(() => {
-    toast.remainingTime -= 100;
+  let isPaused = false;
 
-    if (toast.remainingTime <= 0) {
-      clearInterval(interval);
-      removeToast(toast.id);
+  const interval = setInterval(() => {
+    if (!isPaused) {
+      toast.remainingTime -= 50;
+
+      if (toast.remainingTime <= 0) {
+        clearInterval(interval);
+        removeToast(toast.id);
+      }
     }
-  }, 100);
+  }, 50);
+
+  // Add hover pause functionality
+  const toastElement = document.querySelector(`[data-toast-id="${toast.id}"]`);
+  if (toastElement) {
+    toastElement.addEventListener("mouseenter", () => {
+      isPaused = true;
+    });
+
+    toastElement.addEventListener("mouseleave", () => {
+      isPaused = false;
+    });
+  }
 };
 
 // Style helper methods

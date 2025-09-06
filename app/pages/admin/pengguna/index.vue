@@ -358,6 +358,15 @@
       @close="showDetailModal = false"
       @edit="editPengguna"
     />
+
+    <ConfirmDeleteModal
+      v-if="showDeleteModal && pendingDeletePengguna"
+      :item-name="pendingDeletePengguna.nama"
+      :item-details="pendingDeletePengguna"
+      :loading="deleteLoading"
+      @confirm="confirmDeletePengguna"
+      @cancel="cancelDeletePengguna"
+    />
   </div>
 </template>
 
@@ -412,12 +421,16 @@ const authStore = useAuthStore();
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
+const showDeleteModal = ref(false);
+const pendingDeletePengguna = ref<Pengguna | null>(null);
+const deleteLoading = ref(false);
 
 // Prevent background scroll when modals open
 watch(
-  [showCreateModal, showEditModal, showDetailModal],
-  ([create, edit, detail]) => {
-    document.body.style.overflow = create || edit || detail ? "hidden" : "";
+  [showCreateModal, showEditModal, showDetailModal, showDeleteModal],
+  ([create, edit, detail, deleteModal]) => {
+    document.body.style.overflow =
+      create || edit || detail || deleteModal ? "hidden" : "";
   }
 );
 
@@ -583,7 +596,7 @@ const loadPengguna = async () => {
     });
   } catch (error) {
     console.error("❌ Error loading pengguna:", error);
-    
+
     // Show error toast
     if (typeof window !== "undefined" && (window as any).$toast) {
       (window as any).$toast.error(
@@ -665,52 +678,68 @@ const editPengguna = (pengguna: Pengguna) => {
   showDetailModal.value = false;
 };
 
-const deletePengguna = async (pengguna: Pengguna) => {
-  if (
-    confirm(`Apakah Anda yakin ingin menghapus pengguna "${pengguna.nama}"?`)
-  ) {
-    try {
-      console.log("🗑️ Deleting pengguna:", pengguna.id_pengguna);
+const deletePengguna = (pengguna: Pengguna) => {
+  pendingDeletePengguna.value = pengguna;
+  showDeleteModal.value = true;
+};
 
-      // Delete from pengguna table
-      const { error } = await supabase
-        .from("pengguna")
-        .delete()
-        .eq("id_pengguna", pengguna.id_pengguna);
+const confirmDeletePengguna = async () => {
+  if (!pendingDeletePengguna.value) return;
 
-      if (error) {
-        console.error("❌ Error deleting pengguna:", error);
-        throw new Error(`Gagal hapus pengguna: ${error.message}`);
-      }
+  deleteLoading.value = true;
 
-      console.log("✅ Pengguna deleted successfully");
+  try {
+    const pengguna = pendingDeletePengguna.value;
+    console.log("🗑️ Deleting pengguna:", pengguna.id_pengguna);
 
-      // Show success toast
-      if (typeof window !== "undefined" && (window as any).$toast) {
-        (window as any).$toast.success(
-          `Pengguna "${pengguna.nama}" berhasil dihapus`,
-          "Berhasil Menghapus"
-        );
-      }
-      
-      loadPengguna(); // Reload to update data
-    } catch (error: any) {
+    // Delete from pengguna table
+    const { error } = await supabase
+      .from("pengguna")
+      .delete()
+      .eq("id_pengguna", pengguna.id_pengguna);
+
+    if (error) {
       console.error("❌ Error deleting pengguna:", error);
-      
-      // Show error toast
-      if (typeof window !== "undefined" && (window as any).$toast) {
-        (window as any).$toast.error(
-          `Gagal menghapus pengguna: ${error.message}`,
-          "Gagal Menghapus"
-        );
-      }
+      throw new Error(`Gagal hapus pengguna: ${error.message}`);
     }
+
+    console.log("✅ Pengguna deleted successfully");
+
+    // Show success toast
+    if (typeof window !== "undefined" && (window as any).$toast) {
+      (window as any).$toast.success(
+        `Pengguna "${pengguna.nama}" berhasil dihapus`,
+        "Berhasil Menghapus"
+      );
+    }
+
+    // Close modal and reset state
+    showDeleteModal.value = false;
+    pendingDeletePengguna.value = null;
+
+    loadPengguna(); // Reload to update data
+  } catch (error: any) {
+    console.error("❌ Error deleting pengguna:", error);
+
+    // Show error toast
+    if (typeof window !== "undefined" && (window as any).$toast) {
+      (window as any).$toast.error(
+        `Gagal menghapus pengguna: ${error.message}`,
+        "Gagal Menghapus"
+      );
+    }
+  } finally {
+    deleteLoading.value = false;
   }
 };
 
+const cancelDeletePengguna = () => {
+  showDeleteModal.value = false;
+  pendingDeletePengguna.value = null;
+};
 const handlePenggunaCreated = (newPengguna: Pengguna) => {
   showCreateModal.value = false;
-  
+
   // Show success toast
   if (typeof window !== "undefined" && (window as any).$toast) {
     (window as any).$toast.success(
@@ -718,14 +747,14 @@ const handlePenggunaCreated = (newPengguna: Pengguna) => {
       "Berhasil Menambah"
     );
   }
-  
+
   loadPengguna();
 };
 
 const handlePenggunaUpdated = (updatedPengguna: Pengguna) => {
   showEditModal.value = false;
   selectedPengguna.value = null;
-  
+
   // Show success toast
   if (typeof window !== "undefined" && (window as any).$toast) {
     (window as any).$toast.success(
@@ -733,7 +762,7 @@ const handlePenggunaUpdated = (updatedPengguna: Pengguna) => {
       "Berhasil Mengubah"
     );
   }
-  
+
   loadPengguna();
 };
 
