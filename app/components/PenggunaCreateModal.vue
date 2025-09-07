@@ -278,6 +278,7 @@ import {
 } from "vue";
 import { X, Eye, EyeOff, UserPlus } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
+import bcrypt from "bcryptjs";
 
 const emit = defineEmits<{
   close: [];
@@ -469,6 +470,8 @@ const handleSubmit = async () => {
 
     // Step 2: Create profile in pengguna table
     console.log("📝 Creating pengguna profile...");
+    // Hash password sebelum disimpan
+    const hashedPassword = await bcrypt.hash(form.password, 10);
     const penggunaData = {
       user_id: authData.user.id,
       id_pengguna: generatedId.value,
@@ -476,6 +479,7 @@ const handleSubmit = async () => {
       email: form.email,
       telepon: form.telepon || null,
       role: form.role,
+      kata_sandi: hashedPassword,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

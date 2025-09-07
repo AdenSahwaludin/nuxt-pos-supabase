@@ -18,6 +18,9 @@ export const useAuthStore = defineStore("auth", {
 
         // If using ID format, get email first
         if (!isEmail) {
+          // Convert identifier to uppercase for consistency (003-asd becomes 003-ASD)
+          identifier = identifier.toUpperCase();
+
           const { data: userData, error } = await supabase
             .from("pengguna")
             .select("email")

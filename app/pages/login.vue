@@ -277,10 +277,12 @@ const handleLogin = async () => {
       }
     } else {
       // User ID format (001-ADN)
-      if (!/^\d{3}-[A-Z]{2,4}$/.test(form.identifier)) {
+      if (!/^\d{3}-[a-zA-Z]{2,4}$/.test(form.identifier)) {
         error.value = "Format ID tidak valid. Gunakan format: 001-ADN";
         return;
       }
+      // Convert to uppercase for consistency
+      form.identifier = form.identifier.toUpperCase();
     }
 
     // Authenticate with Supabase
