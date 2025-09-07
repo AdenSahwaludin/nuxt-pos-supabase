@@ -11,10 +11,16 @@ export default defineNuxtConfig({
   modules: ["@nuxt/image", "@pinia/nuxt"],
   css: ["~/assets/css/tailwind.css"],
   runtimeConfig: {
+    // Private keys (only available on server-side)
+    supabase: {
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    },
+    // Public keys (exposed to client-side)
     public: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_KEY,
-      supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      supabase: {
+        url: process.env.SUPABASE_URL,
+        anonKey: process.env.SUPABASE_KEY,
+      },
     },
   },
   postcss: {
