@@ -1,0 +1,2 @@
+pada saat insert data pengguna, password masih null di tabel pengguna.
+buatkan agar ketika login ubah huruf menjadi kapital misal 003-asd ubah menjadi 003-ASD
