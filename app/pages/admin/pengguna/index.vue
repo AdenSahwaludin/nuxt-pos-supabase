@@ -726,25 +726,42 @@ const confirmDeletePengguna = async () => {
     const pengguna = pendingDeletePengguna.value;
     console.log("🗑️ Deleting pengguna:", pengguna.id_pengguna);
 
-    // Delete from pengguna table
-    const { error } = await supabase
-      .from("pengguna")
-      .delete()
-      .eq("id_pengguna", pengguna.id_pengguna);
+    // Use new admin endpoint to delete from both tables
+    const response = await $fetch("/api/admin/delete-user", {
+      method: "POST",
+      body: {
+        id_pengguna: pengguna.id_pengguna,
+        user_id: pengguna.user_id,
+        email: pengguna.email,
+        hard: true, // Hard delete
+      },
+    });
 
-    if (error) {
-      console.error("❌ Error deleting pengguna:", error);
-      throw new Error(`Gagal hapus pengguna: ${error.message}`);
+    if (!response.success) {
+      throw new Error(response.message || "Gagal menghapus pengguna");
     }
 
-    console.log("✅ Pengguna deleted successfully");
+    console.log("✅ Delete response:", response);
+
+    // Prepare success message based on what was deleted
+    let successMessage = `Pengguna "${pengguna.nama}" berhasil dihapus`;
+    if (response.deleted.pengguna && response.deleted.auth) {
+      successMessage += " dari sistem dan autentikasi";
+    } else if (response.deleted.pengguna && !response.deleted.auth) {
+      successMessage += " dari sistem (dengan peringatan autentikasi)";
+    }
+
+    // Show warning if auth deletion failed
+    if (response.warning) {
+      console.warn("⚠️ Delete warning:", response.warning);
+      if (typeof window !== "undefined" && (window as any).$toast) {
+        (window as any).$toast.warning(response.warning, "Peringatan");
+      }
+    }
 
     // Show success toast
     if (typeof window !== "undefined" && (window as any).$toast) {
-      (window as any).$toast.success(
-        `Pengguna "${pengguna.nama}" berhasil dihapus`,
-        "Berhasil Menghapus"
-      );
+      (window as any).$toast.success(successMessage, "Berhasil Menghapus");
     }
 
     // Close modal and reset state
@@ -758,7 +775,7 @@ const confirmDeletePengguna = async () => {
     // Show error toast
     if (typeof window !== "undefined" && (window as any).$toast) {
       (window as any).$toast.error(
-        `Gagal menghapus pengguna: ${error.message}`,
+        error.message || "Gagal menghapus pengguna. Silakan coba lagi.",
         "Gagal Menghapus"
       );
     }
