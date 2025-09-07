@@ -95,6 +95,7 @@
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : ''
               "
+              @input="formatPhoneInput"
             />
             <div v-if="errors.telepon" class="mt-1 text-sm text-red-600">
               {{ errors.telepon }}
@@ -331,9 +332,15 @@ const validateForm = () => {
     isValid = false;
   }
 
-  // Telepon validation (optional but must be valid if provided)
-  if (form.telepon && !/^(\+62|62|0)[0-9]{9,13}$/.test(form.telepon)) {
-    errors.telepon = "Format nomor telepon tidak valid";
+  // Telepon validation (must be numbers only if provided)
+  if (form.telepon && !/^[0-9+\-\s()]+$/.test(form.telepon)) {
+    errors.telepon = "Nomor telepon hanya boleh berisi angka";
+    isValid = false;
+  } else if (
+    form.telepon &&
+    !/^(\+62|62|0)[0-9]{9,13}$/.test(form.telepon.replace(/[\s\-()]/g, ""))
+  ) {
+    errors.telepon = "Format nomor telepon tidak valid (contoh: 081234567890)";
     isValid = false;
   }
 
@@ -472,6 +479,27 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.body.style.overflow = "";
 });
+
+// Format phone input to only allow numbers
+const formatPhoneInput = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  let value = target.value;
+
+  // Remove any non-numeric characters except + at the beginning
+  value = value.replace(/[^\d+]/g, "");
+
+  // Only allow + at the beginning
+  if (value.includes("+") && !value.startsWith("+")) {
+    value = value.replace(/\+/g, "");
+  }
+
+  // If it starts with +, ensure it's +62
+  if (value.startsWith("+") && !value.startsWith("+62")) {
+    value = "+62" + value.substring(1).replace(/\+/g, "");
+  }
+
+  form.telepon = value;
+};
 </script>
 
 <style scoped>

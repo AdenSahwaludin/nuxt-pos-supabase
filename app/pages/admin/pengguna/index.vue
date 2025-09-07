@@ -143,6 +143,11 @@
                 </div>
               </th>
               <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Terakhir Login
+              </th>
+              <th
                 class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Aksi
@@ -163,6 +168,9 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-6 rounded w-16"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-20"></div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-4 rounded w-20"></div>
@@ -234,6 +242,14 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(pengguna?.created_at) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div v-if="pengguna?.terakhir_login">
+                  {{ formatDate(pengguna.terakhir_login) }}
+                </div>
+                <div v-else class="text-gray-400 italic">
+                  Belum pernah login
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center space-x-2">
@@ -408,6 +424,7 @@ interface Pengguna {
   status: "aktif" | "nonaktif";
   created_at: string;
   updated_at: string;
+  terakhir_login?: string;
 }
 
 // Reactive state
@@ -509,17 +526,34 @@ const loadPengguna = async () => {
 
     if (penggunaData && penggunaData.length > 0) {
       // Transform database data to match interface
-      const transformedData: Pengguna[] = penggunaData.map((item: any) => ({
-        id: item.id_pengguna, // Use id_pengguna as the id
-        id_pengguna: item.id_pengguna,
-        nama: item.nama,
-        email: item.email,
-        telepon: item.telepon || undefined,
-        role: item.role as "admin" | "kasir",
-        status: "aktif", // Default to aktif since they exist in database
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-      }));
+      const transformedData: Pengguna[] = penggunaData.map((item: any) => {
+        // Determine status based on terakhir_login
+        let status: "aktif" | "nonaktif" = "nonaktif"; // Default to nonaktif
+
+        if (item.terakhir_login) {
+          const lastLogin = new Date(item.terakhir_login);
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+          // Status aktif if last login was within 7 days
+          if (lastLogin >= sevenDaysAgo) {
+            status = "aktif";
+          }
+        }
+
+        return {
+          id: item.id_pengguna, // Use id_pengguna as the id
+          id_pengguna: item.id_pengguna,
+          nama: item.nama,
+          email: item.email,
+          telepon: item.telepon || undefined,
+          role: item.role as "admin" | "kasir",
+          status: status,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          terakhir_login: item.terakhir_login,
+        };
+      });
 
       console.log("🔄 Transformed data:", transformedData);
       penggunaList.value = transformedData;

@@ -50,8 +50,8 @@
               v-model="form.idSuffix"
               type="text"
               placeholder="Contoh: ADN, KSR"
-              maxlength="4"
-              pattern="[A-Z]{2,4}"
+              maxlength="3"
+              pattern="[A-Z]{3}"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 uppercase"
               :class="
                 errors.idSuffix
@@ -64,7 +64,8 @@
               {{ errors.idSuffix }}
             </div>
             <div class="mt-1 text-xs text-gray-500">
-              2-4 huruf kapital untuk identifikasi pengguna
+              Tepat 3 huruf kapital untuk identifikasi pengguna (contoh: ADN,
+              KSR)
             </div>
           </div>
 
@@ -127,6 +128,7 @@
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : ''
               "
+              @input="formatPhoneInput"
             />
             <div v-if="errors.telepon" class="mt-1 text-sm text-red-600">
               {{ errors.telepon }}
@@ -148,9 +150,8 @@
               "
               required
             >
-              <option value="">Pilih Role</option>
-              <option value="admin">Admin</option>
               <option value="kasir">Kasir</option>
+              <option value="admin">Admin</option>
             </select>
             <div v-if="errors.role" class="mt-1 text-sm text-red-600">
               {{ errors.role }}
@@ -223,8 +224,8 @@
               v-model="form.status"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             >
-              <option value="aktif">Aktif</option>
               <option value="nonaktif">Non-Aktif</option>
+              <option value="aktif">Aktif</option>
             </select>
           </div>
 
@@ -294,10 +295,10 @@ const form = reactive({
   nama: "",
   email: "",
   telepon: "",
-  role: "",
+  role: "kasir", // Default to kasir
   password: "",
   confirmPassword: "",
-  status: "aktif",
+  status: "nonaktif", // Default to nonaktif
 });
 
 const errors = reactive({
@@ -339,13 +340,18 @@ const getNextNumber = async () => {
       const lastId = latestPengguna[0].id_pengguna;
       console.log("📝 Latest ID:", lastId);
 
-      // Extract number from format like "001-ADN"
+      // Extract number from format like "001-ABC" (7 characters total)
       const parts = lastId.split("-");
-      if (parts.length > 0) {
+      if (
+        parts.length === 2 &&
+        parts[0].length === 3 &&
+        parts[1].length === 3
+      ) {
         const lastNumber = parseInt(parts[0]);
         const nextNum = lastNumber + 1;
         nextNumber.value = String(nextNum).padStart(3, "0");
       } else {
+        console.log("⚠️ Invalid ID format, defaulting to 001");
         nextNumber.value = "001";
       }
     } else {
@@ -372,8 +378,11 @@ const validateForm = () => {
   if (!form.idSuffix) {
     errors.idSuffix = "Suffix ID wajib diisi";
     isValid = false;
-  } else if (!/^[A-Z]{2,4}$/.test(form.idSuffix)) {
-    errors.idSuffix = "Suffix harus 2-4 huruf kapital";
+  } else if (!/^[A-Z]{3}$/.test(form.idSuffix)) {
+    errors.idSuffix = "Suffix harus tepat 3 huruf kapital (contoh: ADN)";
+    isValid = false;
+  } else if (form.idSuffix.length > 3) {
+    errors.idSuffix = "Suffix maksimal 3 karakter";
     isValid = false;
   }
 
@@ -392,13 +401,19 @@ const validateForm = () => {
     isValid = false;
   }
 
-  // Telepon validation (optional but must be valid if provided)
-  if (form.telepon && !/^(\+62|62|0)[0-9]{9,13}$/.test(form.telepon)) {
-    errors.telepon = "Format nomor telepon tidak valid";
+  // Telepon validation (must be numbers only if provided)
+  if (form.telepon && !/^[0-9+\-\s()]+$/.test(form.telepon)) {
+    errors.telepon = "Nomor telepon hanya boleh berisi angka";
+    isValid = false;
+  } else if (
+    form.telepon &&
+    !/^(\+62|62|0)[0-9]{9,13}$/.test(form.telepon.replace(/[\s\-()]/g, ""))
+  ) {
+    errors.telepon = "Format nomor telepon tidak valid (contoh: 081234567890)";
     isValid = false;
   }
 
-  // Role validation
+  // Role validation (should always have a value since kasir is default)
   if (!form.role) {
     errors.role = "Role wajib dipilih";
     isValid = false;
@@ -522,6 +537,27 @@ watch(
     form.idSuffix = newValue.toUpperCase();
   }
 );
+
+// Format phone input to only allow numbers
+const formatPhoneInput = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  let value = target.value;
+
+  // Remove any non-numeric characters except + at the beginning
+  value = value.replace(/[^\d+]/g, "");
+
+  // Only allow + at the beginning
+  if (value.includes("+") && !value.startsWith("+")) {
+    value = value.replace(/\+/g, "");
+  }
+
+  // If it starts with +, ensure it's +62
+  if (value.startsWith("+") && !value.startsWith("+62")) {
+    value = "+62" + value.substring(1).replace(/\+/g, "");
+  }
+
+  form.telepon = value;
+};
 
 // Lifecycle
 onMounted(() => {
