@@ -225,7 +225,7 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             >
               <option value="nonaktif">Non-Aktif</option>
-              <option value="aktif">Aktif</option>
+              <option value="aktif" disabled>Aktif</option>
             </select>
           </div>
 
@@ -326,6 +326,7 @@ const getNextNumber = async () => {
 
     // Get the latest pengguna to determine next number
     const { data: latestPengguna, error } = await supabase
+      .schema("sbs")
       .from("pengguna")
       .select("id_pengguna")
       .order("created_at", { ascending: false })
@@ -444,36 +445,12 @@ const handleSubmit = async () => {
   try {
     console.log("🔧 Creating new pengguna...");
 
-    // Step 1: Create user in Supabase Auth
-    console.log("📝 Creating auth user for:", form.email);
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          nama: form.nama,
-          role: form.role,
-        },
-      },
-    });
-
-    if (authError) {
-      console.error("❌ Auth creation error:", authError);
-      throw new Error("Gagal membuat akun: " + authError.message);
-    }
-
-    if (!authData.user) {
-      throw new Error("Gagal membuat user di sistem auth");
-    }
-
-    console.log("✅ Auth user created:", authData.user.id);
-
-    // Step 2: Create profile in pengguna table
-    console.log("📝 Creating pengguna profile...");
     // Hash password sebelum disimpan
     const hashedPassword = await bcrypt.hash(form.password, 10);
+
+    // Create profile in pengguna table only (no auth creation)
+    console.log("📝 Creating pengguna profile...");
     const penggunaData = {
-      user_id: authData.user.id,
       id_pengguna: generatedId.value,
       nama: form.nama,
       email: form.email,
@@ -485,6 +462,7 @@ const handleSubmit = async () => {
     };
 
     const { data: profileData, error: profileError } = await supabase
+      .schema("sbs")
       .from("pengguna")
       .insert([penggunaData])
       .select()
@@ -492,8 +470,6 @@ const handleSubmit = async () => {
 
     if (profileError) {
       console.error("❌ Profile creation error:", profileError);
-      // Try to cleanup auth user if profile creation fails
-      await supabase.auth.admin.deleteUser(authData.user.id);
       throw new Error("Gagal membuat profil pengguna: " + profileError.message);
     }
 
@@ -507,7 +483,7 @@ const handleSubmit = async () => {
       email: profileData.email,
       telepon: profileData.telepon || undefined,
       role: profileData.role,
-      status: profileData.aktif ? "aktif" : "nonaktif",
+      status: "nonaktif", // Default status for new users
       created_at: profileData.created_at,
       updated_at: profileData.updated_at,
     };

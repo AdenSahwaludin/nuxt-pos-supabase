@@ -12,61 +12,52 @@ export const useAuthStore = defineStore("auth", {
     async signIn(identifier: string, password: string) {
       this.loading = true;
       try {
+        // Convert identifier to uppercase for consistency (003-asd becomes 003-ASD)
+        const normalizedIdentifier = identifier.toUpperCase();
+
         // Check if identifier is email or user ID format (001-ADN)
         const isEmail = identifier.includes("@");
-        let email = identifier;
 
-        // If using ID format, get email first
-        if (!isEmail) {
-          // Convert identifier to uppercase for consistency (003-asd becomes 003-ASD)
-          identifier = identifier.toUpperCase();
+        let query = supabase.schema("sbs").from("pengguna").select("*");
 
-          const { data: userData, error } = await supabase
-            .from("pengguna")
-            .select("email")
-            .eq("id_pengguna", identifier)
-            .single();
-
-          if (error || !userData) {
-            console.error("ID Pengguna tidak ditemukan");
-            return false;
-          }
-          email = userData.email;
+        if (isEmail) {
+          query = query.eq("email", identifier);
+        } else {
+          query = query.eq("id_pengguna", normalizedIdentifier);
         }
 
-        // Sign in with Supabase Auth
-        const { data: authData, error: authError } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+        const { data: userData, error } = await query.single();
 
-        if (authError) {
-          console.error("Email/ID atau password salah");
+        if (error || !userData) {
+          console.error("Pengguna tidak ditemukan");
           return false;
         }
 
-        // Get profile and role from sbs.pengguna
-        const { data: profileData, error: profileError } = await supabase
-          .from("pengguna")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .single();
+        // Verify password using bcrypt
+        const bcrypt = await import("bcryptjs");
+        const isPasswordValid = await bcrypt.compare(
+          password,
+          userData.kata_sandi
+        );
 
-        if (profileError || !profileData) {
-          console.error("Profile tidak ditemukan");
+        if (!isPasswordValid) {
+          console.error("Password salah");
           return false;
         }
 
         // Update last login
         await supabase
+          .schema("sbs")
           .from("pengguna")
           .update({ terakhir_login: new Date().toISOString() })
-          .eq("user_id", authData.user.id);
+          .eq("id_pengguna", userData.id_pengguna);
 
-        // Set user and profile
-        this.user = authData.user;
-        this.profile = profileData;
+        // Set user and profile (create a mock user object for compatibility)
+        this.user = {
+          id: userData.id_pengguna,
+          email: userData.email,
+        };
+        this.profile = userData;
 
         // Persist auth state
         this.persistAuth();
@@ -83,9 +74,6 @@ export const useAuthStore = defineStore("auth", {
     async signOut() {
       this.loading = true;
       try {
-        // Sign out from Supabase Auth
-        await supabase.auth.signOut();
-
         this.user = null;
         this.profile = null;
         // Clear stored session data
@@ -106,9 +94,10 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const { data, error } = await supabase
+          .schema("sbs")
           .from("pengguna")
           .select("*")
-          .eq("user_id", uid)
+          .eq("id_pengguna", uid)
           .single();
 
         if (error) {
@@ -124,36 +113,10 @@ export const useAuthStore = defineStore("auth", {
 
     async initAuth() {
       this.loading = true;
-      console.log("🔧 Initializing auth...");
+      console.log("🔧 Initializing custom auth...");
 
       try {
-        // First, try to get session from Supabase
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        console.log("📡 Supabase session:", session?.user?.id);
-
-        if (session?.user) {
-          this.user = session.user;
-
-          // Get profile from sbs.pengguna
-          const { data: profileData, error } = await supabase
-            .from("pengguna")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .single();
-
-          if (!error && profileData) {
-            this.profile = profileData;
-            this.persistAuth();
-            console.log("✅ Auth restored from Supabase:", profileData.role);
-            return; // Exit early if successful
-          } else {
-            console.log("❌ Profile not found for user:", session.user.id);
-          }
-        }
-
-        // Fallback: try to restore from localStorage if Supabase session is not available
+        // Try to restore from localStorage (custom auth system)
         if (process.client) {
           const storedUser = localStorage.getItem("auth-user");
           const storedProfile = localStorage.getItem("auth-profile");
@@ -169,9 +132,10 @@ export const useAuthStore = defineStore("auth", {
 
             // Validate that the stored session is still valid by checking database
             const { data: currentProfile, error } = await supabase
+              .schema("sbs")
               .from("pengguna")
               .select("*")
-              .eq("user_id", userData.id)
+              .eq("id_pengguna", userData.id)
               .single();
 
             if (!error && currentProfile) {

@@ -19,7 +19,7 @@
 
     <!-- Filters & Search -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Search -->
         <div class="md:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-2"
@@ -33,9 +33,8 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Cari berdasarkan nama, email, atau telepon..."
+              placeholder="Cari berdasarkan nama, email, atau ID..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              @input="debouncedSearch"
             />
           </div>
         </div>
@@ -48,12 +47,87 @@
           <select
             v-model="filters.status"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            @change="loadPelanggan"
+            @change="onFilterChange"
           >
             <option value="">Semua Status</option>
-            <option value="aktif">Aktif</option>
-            <option value="nonaktif">Non-Aktif</option>
+            <option value="true">Aktif</option>
+            <option value="false">Nonaktif</option>
           </select>
+        </div>
+
+        <!-- Credit Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Filter Kredit</label
+          >
+          <select
+            v-model="filters.allow_installment"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            @change="onFilterChange"
+          >
+            <option value="">Semua</option>
+            <option value="true">Diizinkan</option>
+            <option value="false">Tidak Diizinkan</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Total Pelanggan</p>
+            <p class="text-2xl font-bold text-gray-900">
+              {{ allPelanggan.length }}
+            </p>
+          </div>
+          <div class="p-3 bg-blue-100 rounded-lg">
+            <Users :size="24" class="text-blue-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Pelanggan Aktif</p>
+            <p class="text-2xl font-bold text-emerald-600">
+              {{ stats.aktif }}
+            </p>
+          </div>
+          <div class="p-3 bg-emerald-100 rounded-lg">
+            <UserCheck :size="24" class="text-emerald-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Pelanggan Kredit</p>
+            <p class="text-2xl font-bold text-purple-600">
+              {{ stats.krediterized }}
+            </p>
+          </div>
+          <div class="p-3 bg-purple-100 rounded-lg">
+            <CreditCard :size="24" class="text-purple-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Baru Bulan Ini</p>
+            <p class="text-2xl font-bold text-orange-600">
+              {{ stats.newThisMonth }}
+            </p>
+          </div>
+          <div class="p-3 bg-orange-100 rounded-lg">
+            <TrendingUp :size="24" class="text-orange-600" />
+          </div>
         </div>
       </div>
     </div>
@@ -91,11 +165,28 @@
             <tr>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                @click="sortBy('nama')"
+                @click="sortByColumn('id_pelanggan')"
+              >
+                <div class="flex items-center space-x-1">
+                  <span>ID Pelanggan</span>
+                  <component
+                    :is="getSortIcon('id_pelanggan')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
+                </div>
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                @click="sortByColumn('nama')"
               >
                 <div class="flex items-center space-x-1">
                   <span>Nama</span>
-                  <ArrowUpDown :size="14" />
+                  <component
+                    :is="getSortIcon('nama')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
                 </div>
               </th>
               <th
@@ -104,22 +195,29 @@
                 Kontak
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                @click="sortByColumn('aktif')"
               >
-                Lokasi
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
+                <div class="flex items-center space-x-1">
+                  <span>Status</span>
+                  <component
+                    :is="getSortIcon('aktif')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
+                </div>
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                @click="sortBy('tanggal_daftar')"
+                @click="sortByColumn('created_at')"
               >
                 <div class="flex items-center space-x-1">
                   <span>Tgl Daftar</span>
-                  <ArrowUpDown :size="14" />
+                  <component
+                    :is="getSortIcon('created_at')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
                 </div>
               </th>
               <th
@@ -133,13 +231,13 @@
             <!-- Loading Skeleton -->
             <tr v-if="loading" v-for="i in 5" :key="i">
               <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-16"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-4 rounded w-24"></div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-4 rounded w-32"></div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="animate-pulse bg-gray-200 h-4 rounded w-24"></div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="animate-pulse bg-gray-200 h-6 rounded w-16"></div>
@@ -163,6 +261,7 @@
               :key="pelanggan?.id || Math.random()"
               class="hover:bg-gray-50"
             >
+              <!-- ID Pelanggan -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div
@@ -170,16 +269,20 @@
                   >
                     {{ getPelangganInitials(pelanggan) }}
                   </div>
-                  <div>
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ pelanggan?.nama || "-" }}
-                    </div>
-                    <div class="text-sm text-gray-500">
-                      {{ pelanggan?.id_pelanggan || "-" }}
-                    </div>
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ pelanggan?.id_pelanggan || "-" }}
                   </div>
                 </div>
               </td>
+
+              <!-- Nama -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ pelanggan?.nama || "-" }}
+                </div>
+              </td>
+
+              <!-- Kontak -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">
                   {{ pelanggan?.telepon || "-" }}
@@ -188,14 +291,8 @@
                   {{ pelanggan?.email || "-" }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">
-                  {{ pelanggan?.kota || "-" }}
-                </div>
-                <div class="text-sm text-gray-500">
-                  {{ pelanggan?.alamat || "-" }}
-                </div>
-              </td>
+
+              <!-- Status -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-col space-y-1">
                   <span
@@ -206,7 +303,7 @@
                         : 'bg-red-100 text-red-800'
                     "
                   >
-                    {{ pelanggan?.aktif ? "Aktif" : "Non-Aktif" }}
+                    {{ pelanggan?.aktif ? "Aktif" : "Nonaktif" }}
                   </span>
                   <span
                     v-if="pelanggan?.allow_installment"
@@ -216,11 +313,15 @@
                   </span>
                 </div>
               </td>
+
+              <!-- Tanggal Daftar -->
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{
                   formatDate(pelanggan?.tanggal_daftar || pelanggan?.created_at)
                 }}
               </td>
+
+              <!-- Actions -->
               <td class="px-6 py-4 whitespace-nowrap text-center">
                 <div class="flex items-center justify-center space-x-2">
                   <button
@@ -350,14 +451,20 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, reactive, computed, onMounted, watch } from "vue";
+import { supabase } from "~~/lib/supabaseClient";
 import {
   UserPlus,
   Search,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Eye,
   Edit,
   Trash2,
+  Users,
   UserCheck,
+  CreditCard,
+  TrendingUp,
   ChevronLeft,
   ChevronRight,
 } from "lucide-vue-next";
@@ -393,7 +500,7 @@ interface Pelanggan {
 // Reactive state
 const loading = ref(false);
 const searchQuery = ref("");
-const pelangganList = ref<Pelanggan[]>([]);
+const allPelanggan = ref<Pelanggan[]>([]);
 const selectedPelanggan = ref<Pelanggan | null>(null);
 
 // Modal states
@@ -401,10 +508,23 @@ const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
 
+// Prevent background scroll when modals open
+watch(
+  [showCreateModal, showEditModal, showDetailModal],
+  ([create, edit, detail]) => {
+    document.body.style.overflow = create || edit || detail ? "hidden" : "";
+  }
+);
+
 // Filters
 const filters = reactive({
   status: "",
+  allow_installment: "",
 });
+
+// Sorting
+const sortBy = ref("created_at");
+const sortDirection = ref<"asc" | "desc">("desc");
 
 // Pagination
 const pagination = reactive({
@@ -416,10 +536,105 @@ const pagination = reactive({
   to: 0,
 });
 
-// Sorting
-const sorting = reactive({
-  field: "tanggal_daftar",
-  direction: "desc",
+// Computed properties for filtering and sorting like pengguna
+const filteredPelanggan = computed(() => {
+  let result = [...allPelanggan.value];
+
+  // Apply search filter
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim();
+    result = result.filter(
+      (pelanggan) =>
+        pelanggan.nama?.toLowerCase().includes(query) ||
+        pelanggan.email?.toLowerCase().includes(query) ||
+        pelanggan.id_pelanggan?.toLowerCase().includes(query) ||
+        pelanggan.telepon?.toLowerCase().includes(query)
+    );
+  }
+
+  // Apply status filter
+  if (filters.status !== "") {
+    const isActive = filters.status === "true";
+    result = result.filter((pelanggan) => pelanggan.aktif === isActive);
+  }
+
+  // Apply installment filter
+  if (filters.allow_installment !== "") {
+    const allowInstallment = filters.allow_installment === "true";
+    result = result.filter(
+      (pelanggan) => pelanggan.allow_installment === allowInstallment
+    );
+  }
+
+  return result;
+});
+
+const pelangganList = computed(() => {
+  let result = [...filteredPelanggan.value];
+
+  // Apply sorting
+  result.sort((a, b) => {
+    const aVal = a[sortBy.value] || "";
+    const bVal = b[sortBy.value] || "";
+
+    let comparison = 0;
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      comparison = aVal.localeCompare(bVal);
+    } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+      comparison = aVal === bVal ? 0 : aVal ? 1 : -1;
+    } else {
+      comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+    }
+
+    return sortDirection.value === "asc" ? comparison : -comparison;
+  });
+
+  // Update pagination totals
+  pagination.total = result.length;
+  pagination.totalPages = Math.ceil(result.length / pagination.perPage);
+  pagination.from = (pagination.currentPage - 1) * pagination.perPage + 1;
+  pagination.to = Math.min(
+    pagination.currentPage * pagination.perPage,
+    result.length
+  );
+
+  // Apply pagination
+  const start = (pagination.currentPage - 1) * pagination.perPage;
+  const end = start + pagination.perPage;
+  result = result.slice(start, end);
+
+  // Add index for display
+  return result.map((pelanggan, index) => ({
+    ...pelanggan,
+    idx: start + index + 1,
+  }));
+});
+
+// Stats computed properties
+const stats = computed(() => {
+  const total = allPelanggan.value.length;
+  const aktif = allPelanggan.value.filter((p) => p.aktif).length;
+  const krediterized = allPelanggan.value.filter(
+    (p) => p.allow_installment
+  ).length;
+
+  // Calculate new this month
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const newThisMonth = allPelanggan.value.filter((p) => {
+    const createdAt = new Date(p.created_at);
+    return (
+      createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear
+    );
+  }).length;
+
+  return {
+    total,
+    aktif,
+    krediterized,
+    newThisMonth,
+  };
 });
 
 // Computed properties
@@ -456,79 +671,179 @@ const visiblePages = computed(() => {
 // Methods
 const loadPelanggan = async () => {
   loading.value = true;
+  console.log("🔄 Loading pelanggan data from database...");
+
   try {
-    // TODO: Implement API call
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+    // Query pelanggan from database
+    console.log("📡 Fetching from pelanggan table...");
+    const { data: pelangganData, error } = await supabase
+      .schema("sbs")
+      .from("pelanggan")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    // Mock data for now
-    pelangganList.value = [
-      {
-        id: "1",
-        id_pelanggan: "P001",
-        nama: "Andi Wijaya",
-        email: "andi.wijaya@gmail.com",
-        telepon: "081234567890",
-        kota: "Jakarta",
-        alamat: "Jl. Sudirman No. 123, Jakarta",
-        aktif: true,
-        tanggal_daftar: "2025-01-01T00:00:00Z",
-        allow_installment: true,
-        credit_limit: "5000000",
-        max_tenor_bulan: 12,
-        trust_score: "A",
-        created_at: "2025-01-01T00:00:00Z",
-        updated_at: "2025-01-01T00:00:00Z",
-      },
-      {
-        id: "2",
-        id_pelanggan: "P002",
-        nama: "Sari Dewi",
-        email: "sari.dewi@gmail.com",
-        telepon: "081234567891",
-        kota: "Bandung",
-        alamat: "Jl. Gatot Subroto No. 456, Bandung",
-        aktif: false,
-        tanggal_daftar: "2025-01-02T00:00:00Z",
-        allow_installment: false,
-        credit_limit: "2000000",
-        max_tenor_bulan: 6,
-        trust_score: "B",
-        created_at: "2025-01-02T00:00:00Z",
-        updated_at: "2025-01-02T00:00:00Z",
-      },
-    ];
+    if (error) {
+      console.error("❌ Supabase query error:", error);
+      throw error;
+    }
 
-    pagination.total = pelangganList.value.length;
-    pagination.totalPages = Math.ceil(pagination.total / pagination.perPage);
-    pagination.from = Math.min(
-      (pagination.currentPage - 1) * pagination.perPage + 1,
-      pagination.total
-    );
-    pagination.to = Math.min(
-      pagination.currentPage * pagination.perPage,
-      pagination.total
-    );
-  } catch (error) {
-    console.error("Error loading pelanggan:", error);
-    window.$toast?.error("Gagal memuat data pelanggan");
+    console.log("📝 Database data received:", pelangganData);
+
+    if (pelangganData && pelangganData.length > 0) {
+      // Transform database data to match interface
+      const transformedData: Pelanggan[] = pelangganData.map((item: any) => {
+        return {
+          id: item.id_pelanggan, // Use id_pelanggan as the id
+          id_pelanggan: item.id_pelanggan,
+          nama: item.nama,
+          email: item.email || undefined,
+          telepon: item.telepon || undefined,
+          kota: item.kota || undefined,
+          alamat: item.alamat || undefined,
+          aktif: item.aktif,
+          tanggal_daftar: item.tanggal_daftar || item.created_at,
+          allow_installment: item.allow_installment || false,
+          credit_limit: item.credit_limit?.toString() || "0",
+          max_tenor_bulan: item.max_tenor_bulan || 0,
+          trust_score: item.trust_score?.toString() || "0",
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        };
+      });
+
+      console.log("✅ Transformed data:", transformedData);
+      allPelanggan.value = transformedData;
+    } else {
+      console.log("📭 No pelanggan data found");
+      allPelanggan.value = [];
+    }
+  } catch (error: any) {
+    console.error("❌ Error loading pelanggan:", error);
+    if (typeof window !== "undefined" && (window as any).$toast) {
+      (window as any).$toast.error(
+        error.message || "Gagal memuat data pelanggan",
+        "Error"
+      );
+    }
+    // Fallback to empty array
+    allPelanggan.value = [];
   } finally {
     loading.value = false;
   }
 };
 
-const debouncedSearch = useDebounceFn(() => {
-  pagination.currentPage = 1;
-  loadPelanggan();
-}, 300);
+// Modal handlers
+const viewPelanggan = (pelanggan: Pelanggan) => {
+  selectedPelanggan.value = pelanggan;
+  showDetailModal.value = true;
+};
 
-const sortBy = (field: string) => {
-  if (sorting.field === field) {
-    sorting.direction = sorting.direction === "asc" ? "desc" : "asc";
-  } else {
-    sorting.field = field;
-    sorting.direction = "asc";
+const editPelanggan = (pelanggan: Pelanggan) => {
+  selectedPelanggan.value = pelanggan;
+  showEditModal.value = true;
+};
+
+const deletePelanggan = async (pelanggan: Pelanggan) => {
+  if (
+    confirm(`Apakah Anda yakin ingin menghapus pelanggan "${pelanggan.nama}"?`)
+  ) {
+    try {
+      console.log("🗑️ Deleting pelanggan:", pelanggan.id_pelanggan);
+
+      // Delete from sbs.pelanggan table
+      const { error } = await supabase
+        .schema("sbs")
+        .from("pelanggan")
+        .delete()
+        .eq("id_pelanggan", pelanggan.id_pelanggan);
+
+      if (error) {
+        console.error("❌ Error deleting pelanggan:", error);
+        throw new Error(`Gagal hapus pelanggan: ${error.message}`);
+      }
+
+      console.log("✅ Pelanggan deleted successfully");
+
+      if (typeof window !== "undefined" && (window as any).$toast) {
+        (window as any).$toast.success(
+          `Pelanggan "${pelanggan.nama}" berhasil dihapus`,
+          "Berhasil"
+        );
+      }
+
+      // Reload data to get fresh data from server
+      loadPelanggan();
+    } catch (error: any) {
+      console.error("❌ Error deleting pelanggan:", error);
+
+      if (typeof window !== "undefined" && (window as any).$toast) {
+        (window as any).$toast.error(
+          error.message || "Gagal menghapus pelanggan. Silakan coba lagi.",
+          "Gagal"
+        );
+      }
+    }
   }
+};
+
+// Handle modal events
+const handlePelangganCreated = (newPelanggan: Pelanggan) => {
+  // Add new pelanggan to the list
+  allPelanggan.value.unshift(newPelanggan);
+  showCreateModal.value = false;
+
+  if (typeof window !== "undefined" && (window as any).$toast) {
+    (window as any).$toast.success(
+      `Pelanggan "${newPelanggan.nama}" berhasil ditambahkan`,
+      "Berhasil"
+    );
+  }
+
+  // Reload data to get fresh data from server
   loadPelanggan();
+};
+
+const handlePelangganUpdated = (updatedPelanggan: Pelanggan) => {
+  // Update pelanggan in the list
+  const index = allPelanggan.value.findIndex(
+    (p) => p.id === updatedPelanggan.id
+  );
+  if (index !== -1) {
+    allPelanggan.value[index] = updatedPelanggan;
+  }
+  showEditModal.value = false;
+
+  if (typeof window !== "undefined" && (window as any).$toast) {
+    (window as any).$toast.success(
+      `Pelanggan "${updatedPelanggan.nama}" berhasil diperbarui`,
+      "Berhasil"
+    );
+  }
+
+  // Reload data to get fresh data from server
+  loadPelanggan();
+};
+
+// Sorting function
+const sortByColumn = (field: string) => {
+  if (sortBy.value === field) {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  } else {
+    sortBy.value = field;
+    sortDirection.value = "asc";
+  }
+  pagination.currentPage = 1; // Reset to first page when sorting
+};
+
+// Get sort icon component
+const getSortIcon = (field: string) => {
+  if (sortBy.value !== field) return ArrowUpDown;
+  return sortDirection.value === "asc" ? ArrowUp : ArrowDown;
+};
+
+// Filter change handler
+const onFilterChange = () => {
+  pagination.currentPage = 1; // Reset to first page when filtering
 };
 
 const changePage = (page: number) => {
@@ -567,63 +882,17 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const viewPelanggan = (pelanggan: Pelanggan) => {
-  selectedPelanggan.value = pelanggan;
-  showDetailModal.value = true;
-};
-
-const editPelanggan = (pelanggan: Pelanggan) => {
-  selectedPelanggan.value = pelanggan;
-  showEditModal.value = true;
-  showDetailModal.value = false;
-};
-
-const deletePelanggan = async (pelanggan: Pelanggan) => {
-  if (
-    confirm(`Apakah Anda yakin ingin menghapus pelanggan "${pelanggan.nama}"?`)
-  ) {
-    try {
-      // TODO: Implement delete API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Remove from list
-      const index = pelangganList.value.findIndex((p) => p.id === pelanggan.id);
-      if (index !== -1) {
-        pelangganList.value.splice(index, 1);
-      }
-
-      window.$toast?.success("Pelanggan berhasil dihapus");
-      loadPelanggan(); // Reload to update pagination
-    } catch (error) {
-      console.error("Error deleting pelanggan:", error);
-      window.$toast?.error("Gagal menghapus pelanggan");
-    }
-  }
-};
-
-const handlePelangganCreated = (newPelanggan: Pelanggan) => {
-  showCreateModal.value = false;
-  window.$toast?.success("Pelanggan berhasil dibuat");
-  loadPelanggan();
-};
-
-const handlePelangganUpdated = (updatedPelanggan: Pelanggan) => {
-  showEditModal.value = false;
-  selectedPelanggan.value = null;
-  window.$toast?.success("Pelanggan berhasil diperbarui");
-  loadPelanggan();
-};
-
 // Lifecycle
 onMounted(() => {
   loadPelanggan();
 });
-
-// Watch for search changes
-watch(searchQuery, () => {
-  debouncedSearch();
-});
 </script>
+
+<style>
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+</style>
 
 <style scoped>
 /* Table hover effects */

@@ -48,7 +48,7 @@
           <select
             v-model="filters.role"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            @change="loadPengguna"
+            @change="onFilterChange"
           >
             <option value="">Semua Role</option>
             <option value="admin">Admin</option>
@@ -64,7 +64,7 @@
           <select
             v-model="filters.status"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            @change="loadPengguna"
+            @change="onFilterChange"
           >
             <option value="">Semua Status</option>
             <option value="aktif">Aktif</option>
@@ -90,7 +90,7 @@
             <select
               v-model="pagination.perPage"
               class="px-3 py-1 border border-gray-300 rounded text-sm"
-              @change="loadPengguna"
+              @change="onPerPageChange"
             >
               <option value="10">10</option>
               <option value="25">25</option>
@@ -107,20 +107,26 @@
             <tr>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                :class="
+                  sorting.field === 'nama' ? 'bg-gray-100 text-gray-700' : ''
+                "
                 @click="sortBy('nama')"
               >
                 <div class="flex items-center space-x-1">
                   <span>Nama</span>
-                  <ArrowUpDown :size="14" />
+                  <component :is="getSortIcon('nama')" :size="14" />
                 </div>
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                :class="
+                  sorting.field === 'email' ? 'bg-gray-100 text-gray-700' : ''
+                "
                 @click="sortBy('email')"
               >
                 <div class="flex items-center space-x-1">
                   <span>Email</span>
-                  <ArrowUpDown :size="14" />
+                  <component :is="getSortIcon('email')" :size="14" />
                 </div>
               </th>
               <th
@@ -135,11 +141,16 @@
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                :class="
+                  sorting.field === 'created_at'
+                    ? 'bg-gray-100 text-gray-700'
+                    : ''
+                "
                 @click="sortBy('created_at')"
               >
                 <div class="flex items-center space-x-1">
                   <span>Dibuat</span>
-                  <ArrowUpDown :size="14" />
+                  <component :is="getSortIcon('created_at')" :size="14" />
                 </div>
               </th>
               <th
@@ -394,6 +405,8 @@ import {
   UserPlus,
   Search,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Eye,
   Edit,
   Trash2,
@@ -430,7 +443,7 @@ interface Pengguna {
 // Reactive state
 const loading = ref(false);
 const searchQuery = ref("");
-const penggunaList = ref<Pengguna[]>([]);
+const allPengguna = ref<Pengguna[]>([]); // Raw data from database
 const selectedPengguna = ref<Pengguna | null>(null);
 const authStore = useAuthStore();
 
@@ -474,6 +487,83 @@ const sorting = reactive({
 });
 
 // Computed properties
+const filteredPengguna = computed(() => {
+  let filtered = [...allPengguna.value];
+
+  // Apply role filter
+  if (filters.role) {
+    filtered = filtered.filter((pengguna) => pengguna.role === filters.role);
+  }
+
+  // Apply status filter
+  if (filters.status) {
+    filtered = filtered.filter(
+      (pengguna) => pengguna.status === filters.status
+    );
+  }
+
+  // Apply search filter
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      (pengguna) =>
+        pengguna.nama?.toLowerCase().includes(query) ||
+        pengguna.email?.toLowerCase().includes(query) ||
+        pengguna.id_pengguna?.toLowerCase().includes(query)
+    );
+  }
+
+  // Apply sorting
+  if (sorting.field) {
+    filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      // Get values for comparison based on field
+      switch (sorting.field) {
+        case "nama":
+          aValue = a.nama?.toLowerCase() || "";
+          bValue = b.nama?.toLowerCase() || "";
+          break;
+        case "email":
+          aValue = a.email?.toLowerCase() || "";
+          bValue = b.email?.toLowerCase() || "";
+          break;
+        case "created_at":
+          aValue = new Date(a.created_at || 0).getTime();
+          bValue = new Date(b.created_at || 0).getTime();
+          break;
+        case "id_pengguna":
+          aValue = a.id_pengguna?.toLowerCase() || "";
+          bValue = b.id_pengguna?.toLowerCase() || "";
+          break;
+        default:
+          return 0;
+      }
+
+      // Compare values
+      let comparison = 0;
+      if (aValue > bValue) {
+        comparison = 1;
+      } else if (aValue < bValue) {
+        comparison = -1;
+      }
+
+      // Apply direction
+      return sorting.direction === "desc" ? comparison * -1 : comparison;
+    });
+  }
+
+  return filtered;
+});
+
+const penggunaList = computed(() => {
+  const filtered = filteredPengguna.value;
+  const startIndex = (pagination.currentPage - 1) * pagination.perPage;
+  const endIndex = startIndex + pagination.perPage;
+  return filtered.slice(startIndex, endIndex);
+});
+
 const visiblePages = computed(() => {
   const pages = [];
   const totalPages = pagination.totalPages;
@@ -505,6 +595,17 @@ const visiblePages = computed(() => {
 });
 
 // Methods
+const updatePagination = () => {
+  const total = filteredPengguna.value.length;
+  pagination.total = total;
+  pagination.totalPages = Math.ceil(total / pagination.perPage);
+  pagination.from =
+    total > 0
+      ? Math.min((pagination.currentPage - 1) * pagination.perPage + 1, total)
+      : 0;
+  pagination.to = Math.min(pagination.currentPage * pagination.perPage, total);
+};
+
 const loadPengguna = async () => {
   loading.value = true;
   console.log("🔄 Loading pengguna data from database...");
@@ -513,6 +614,7 @@ const loadPengguna = async () => {
     // Query pengguna from database
     console.log("📡 Fetching from pengguna table...");
     const { data: penggunaData, error } = await supabase
+      .schema("sbs")
       .from("pengguna")
       .select("*")
       .order("created_at", { ascending: false });
@@ -556,8 +658,8 @@ const loadPengguna = async () => {
       });
 
       console.log("🔄 Transformed data:", transformedData);
-      penggunaList.value = transformedData;
-      console.log("✅ Database data assigned to penggunaList.value");
+      allPengguna.value = transformedData;
+      console.log("✅ Database data assigned to allPengguna.value");
     } else {
       console.log("📭 No data found in database, using mock data");
       // Fallback to mock data if database is empty
@@ -585,43 +687,12 @@ const loadPengguna = async () => {
           updated_at: "2025-01-02T00:00:00Z",
         },
       ];
-      penggunaList.value = mockData;
-      console.log("� Mock data assigned as fallback");
+      allPengguna.value = mockData;
+      console.log("📝 Mock data assigned as fallback");
     }
 
-    // Apply filters if any
-    if (filters.role || filters.status) {
-      console.log("🔍 Applying filters:", filters);
-      penggunaList.value = penggunaList.value.filter((pengguna) => {
-        const roleMatch = !filters.role || pengguna.role === filters.role;
-        const statusMatch =
-          !filters.status || pengguna.status === filters.status;
-        return roleMatch && statusMatch;
-      });
-    }
-
-    // Apply search if any
-    if (searchQuery.value.trim()) {
-      console.log("🔍 Applying search:", searchQuery.value);
-      const query = searchQuery.value.toLowerCase();
-      penggunaList.value = penggunaList.value.filter(
-        (pengguna) =>
-          pengguna.nama?.toLowerCase().includes(query) ||
-          pengguna.email?.toLowerCase().includes(query) ||
-          pengguna.id_pengguna?.toLowerCase().includes(query)
-      );
-    }
-
-    pagination.total = penggunaList.value.length;
-    pagination.totalPages = Math.ceil(pagination.total / pagination.perPage);
-    pagination.from = Math.min(
-      (pagination.currentPage - 1) * pagination.perPage + 1,
-      pagination.total
-    );
-    pagination.to = Math.min(
-      pagination.currentPage * pagination.perPage,
-      pagination.total
-    );
+    // Update pagination after data is loaded
+    updatePagination();
 
     console.log("📊 Pagination updated:", {
       total: pagination.total,
@@ -640,7 +711,7 @@ const loadPengguna = async () => {
     }
 
     // Fallback to empty array on error
-    penggunaList.value = [];
+    allPengguna.value = [];
   } finally {
     loading.value = false;
     console.log("🏁 Loading completed");
@@ -649,7 +720,17 @@ const loadPengguna = async () => {
 
 const debouncedSearch = () => {
   pagination.currentPage = 1;
-  loadPengguna();
+  updatePagination();
+};
+
+const onFilterChange = () => {
+  pagination.currentPage = 1;
+  updatePagination();
+};
+
+const onPerPageChange = () => {
+  pagination.currentPage = 1;
+  updatePagination();
 };
 
 const sortBy = (field: string) => {
@@ -659,13 +740,20 @@ const sortBy = (field: string) => {
     sorting.field = field;
     sorting.direction = "asc";
   }
-  loadPengguna();
+  // Reset to first page when sorting changes
+  pagination.currentPage = 1;
+  updatePagination();
+};
+
+const getSortIcon = (field: string) => {
+  if (sorting.field !== field) return ArrowUpDown;
+  return sorting.direction === "asc" ? ArrowUp : ArrowDown;
 };
 
 const changePage = (page: number) => {
   if (page >= 1 && page <= pagination.totalPages) {
     pagination.currentPage = page;
-    loadPengguna();
+    updatePagination();
   }
 };
 
@@ -726,42 +814,26 @@ const confirmDeletePengguna = async () => {
     const pengguna = pendingDeletePengguna.value;
     console.log("🗑️ Deleting pengguna:", pengguna.id_pengguna);
 
-    // Use new admin endpoint to delete from both tables
-    const response = await $fetch("/api/admin/delete-user", {
-      method: "POST",
-      body: {
-        id_pengguna: pengguna.id_pengguna,
-        user_id: pengguna.user_id,
-        email: pengguna.email,
-        hard: true, // Hard delete
-      },
-    });
+    // Delete from sbs.pengguna table only
+    const { error } = await supabase
+      .schema("sbs")
+      .from("pengguna")
+      .delete()
+      .eq("id_pengguna", pengguna.id_pengguna);
 
-    if (!response.success) {
-      throw new Error(response.message || "Gagal menghapus pengguna");
+    if (error) {
+      console.error("❌ Error deleting pengguna:", error);
+      throw new Error(`Gagal hapus pengguna: ${error.message}`);
     }
 
-    console.log("✅ Delete response:", response);
-
-    // Prepare success message based on what was deleted
-    let successMessage = `Pengguna "${pengguna.nama}" berhasil dihapus`;
-    if (response.deleted.pengguna && response.deleted.auth) {
-      successMessage += " dari sistem dan autentikasi";
-    } else if (response.deleted.pengguna && !response.deleted.auth) {
-      successMessage += " dari sistem (dengan peringatan autentikasi)";
-    }
-
-    // Show warning if auth deletion failed
-    if (response.warning) {
-      console.warn("⚠️ Delete warning:", response.warning);
-      if (typeof window !== "undefined" && (window as any).$toast) {
-        (window as any).$toast.warning(response.warning, "Peringatan");
-      }
-    }
+    console.log("✅ Pengguna deleted successfully");
 
     // Show success toast
     if (typeof window !== "undefined" && (window as any).$toast) {
-      (window as any).$toast.success(successMessage, "Berhasil Menghapus");
+      (window as any).$toast.success(
+        `Pengguna "${pengguna.nama}" berhasil dihapus`,
+        "Berhasil Menghapus"
+      );
     }
 
     // Close modal and reset state
@@ -829,6 +901,16 @@ onMounted(() => {
 // Watch for search changes
 watch(searchQuery, () => {
   debouncedSearch();
+});
+
+// Watch for filter changes
+watch([() => filters.role, () => filters.status, filteredPengguna], () => {
+  updatePagination();
+});
+
+// Watch for sorting changes
+watch([() => sorting.field, () => sorting.direction], () => {
+  updatePagination();
 });
 </script>
 

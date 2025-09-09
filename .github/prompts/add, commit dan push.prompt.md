@@ -1,5 +1,6 @@
 ---
 mode: agent
+model: o4-mini (Preview)
 ---
 
 Untuk menambahkan semua perubahan, commit, dan push ke branch `main` dengan pesan commit mengikuti Conventional Commits (standar industri), gunakan perintah berikut:

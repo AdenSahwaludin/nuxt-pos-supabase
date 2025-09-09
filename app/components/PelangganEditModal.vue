@@ -1,10 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
-    <div
-      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-      @click="$emit('close')"
-    ></div>
+    <div class="fixed inset-0 modal-backdrop" @click="$emit('close')"></div>
 
     <!-- Modal -->
     <div class="flex min-h-full items-center justify-center p-4">
@@ -119,11 +116,11 @@
               Status
             </label>
             <select
-              v-model="form.status"
+              v-model="form.aktif"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             >
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Non-Aktif</option>
+              <option :value="true">Aktif</option>
+              <option :value="false">Non-Aktif</option>
             </select>
           </div>
 
@@ -233,6 +230,7 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, reactive, onMounted } from "vue";
+import { supabase } from "~~/lib/supabaseClient";
 import { X, Edit } from "lucide-vue-next";
 
 interface Props {
@@ -243,7 +241,7 @@ interface Props {
     no_hp?: string;
     email?: string;
     alamat?: string;
-    status: "aktif" | "nonaktif";
+    aktif: boolean;
     allow_installment?: boolean;
     credit_limit?: number;
     max_tenor_bulan?: number;
@@ -267,7 +265,7 @@ const form = reactive({
   no_hp: "",
   email: "",
   alamat: "",
-  status: "aktif",
+  aktif: true,
   allow_installment: false,
   credit_limit: 0,
   max_tenor_bulan: 3,
@@ -286,7 +284,7 @@ const loadFormData = () => {
   form.no_hp = props.pelanggan.no_hp || "";
   form.email = props.pelanggan.email || "";
   form.alamat = props.pelanggan.alamat || "";
-  form.status = props.pelanggan.status;
+  form.aktif = props.pelanggan.aktif;
   form.allow_installment = props.pelanggan.allow_installment || false;
   form.credit_limit = props.pelanggan.credit_limit || 0;
   form.max_tenor_bulan = props.pelanggan.max_tenor_bulan || 3;
@@ -350,21 +348,56 @@ const handleSubmit = async () => {
   submitError.value = "";
 
   try {
-    // TODO: Implement API call to update customer
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+    console.log("📝 Updating pelanggan...");
 
-    const updatedPelanggan = {
-      ...props.pelanggan,
+    // Prepare data for Supabase
+    const pelangganData = {
       nama: form.nama,
-      no_hp: form.no_hp || undefined,
-      email: form.email || undefined,
-      alamat: form.alamat || undefined,
-      status: form.status,
+      email: form.email || null,
+      telepon: form.no_hp || null,
+      alamat: form.alamat || null,
+      aktif: form.aktif,
       allow_installment: form.allow_installment,
-      credit_limit: form.allow_installment ? form.credit_limit : null,
-      max_tenor_bulan: form.allow_installment ? form.max_tenor_bulan : null,
-      trust_score: form.allow_installment ? form.trust_score : null,
+      credit_limit: form.allow_installment ? form.credit_limit : 0,
+      max_tenor_bulan: form.allow_installment ? form.max_tenor_bulan : 0,
+      trust_score: form.allow_installment ? form.trust_score : 0,
       updated_at: new Date().toISOString(),
+    };
+
+    console.log("📤 Sending update to Supabase:", pelangganData);
+
+    // Update in sbs.pelanggan table
+    const { data, error } = await supabase
+      .schema("sbs")
+      .from("pelanggan")
+      .update(pelangganData)
+      .eq("id_pelanggan", props.pelanggan.id_pelanggan)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Supabase update error:", error);
+      throw new Error(`Gagal memperbarui pelanggan: ${error.message}`);
+    }
+
+    console.log("✅ Pelanggan updated successfully:", data);
+
+    // Transform response data to match interface
+    const updatedPelanggan = {
+      id: data.id_pelanggan,
+      id_pelanggan: data.id_pelanggan,
+      nama: data.nama,
+      email: data.email || undefined,
+      telepon: data.telepon || undefined,
+      alamat: data.alamat || undefined,
+      aktif: data.aktif,
+      tanggal_daftar: data.tanggal_daftar || data.created_at,
+      allow_installment: data.allow_installment,
+      credit_limit: data.credit_limit?.toString() || "0",
+      max_tenor_bulan: data.max_tenor_bulan || 0,
+      trust_score: data.trust_score?.toString() || "0",
+      created_at: data.created_at,
+      updated_at: data.updated_at,
     };
 
     // Emit success

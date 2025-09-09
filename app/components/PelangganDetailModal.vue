@@ -1,10 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 overflow-y-auto">
     <!-- Backdrop -->
-    <div
-      class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-      @click="$emit('close')"
-    ></div>
+    <div class="fixed inset-0 modal-backdrop" @click="$emit('close')"></div>
 
     <!-- Modal -->
     <div class="flex min-h-full items-center justify-center p-4">
@@ -44,12 +41,12 @@
                 <span
                   class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                   :class="
-                    pelanggan.status === 'aktif'
+                    pelanggan.aktif
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-red-100 text-red-800'
                   "
                 >
-                  {{ pelanggan.status }}
+                  {{ pelanggan.aktif ? "Aktif" : "Nonaktif" }}
                 </span>
                 <span
                   v-if="pelanggan.allow_installment"
@@ -233,12 +230,12 @@
                   <span
                     class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                     :class="
-                      pelanggan.status === 'aktif'
+                      pelanggan.aktif
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-red-100 text-red-800'
                     "
                   >
-                    {{ pelanggan.status }}
+                    {{ pelanggan.aktif ? "Aktif" : "Nonaktif" }}
                   </span>
                 </div>
               </div>
@@ -282,7 +279,12 @@
               Tutup
             </button>
             <button
-              @click="$emit('edit', pelanggan)"
+              @click="
+                () => {
+                  $emit('edit', pelanggan);
+                  $emit('close');
+                }
+              "
               class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2"
             >
               <Edit :size="16" />
@@ -316,7 +318,7 @@ interface Props {
     no_hp?: string;
     email?: string;
     alamat?: string;
-    status: "aktif" | "nonaktif";
+    aktif: boolean;
     allow_installment?: boolean;
     credit_limit?: number;
     max_tenor_bulan?: number;

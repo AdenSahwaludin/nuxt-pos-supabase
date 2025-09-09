@@ -155,7 +155,69 @@ create policy r_all_piutang on piutang for select using (auth.uid() is not null)
 create policy r_all_bayar on pembayaran for select using (auth.uid() is not null);
 
 
-create policy w_admin_produk on produk for all using (exists (select 1 from pengguna where user_id=auth.uid() and role='admin')) with check (exists (select 1 from pengguna where user_id=auth.uid() and role='admin'));
+-- create policy w_admin_produk on produk for all using (exists (select 1 from pengguna where user_id=auth.uid() and role='admin')) with check (exists (select 1 from pengguna where user_id=auth.uid() and role='admin'));
+
+-- Write policies for admin
+CREATE POLICY sbs_write_admin_produk ON sbs.produk
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin policies for pengguna table
+-- CREATE POLICY sbs_admin_update_pengguna ON sbs.pengguna
+--   FOR UPDATE USING (
+--     EXISTS (
+--       SELECT 1 FROM sbs.pengguna 
+--       WHERE user_id = auth.uid() AND role = 'admin'
+--     )
+--   )
+--   WITH CHECK (
+--     EXISTS (
+--       SELECT 1 FROM sbs.pengguna 
+--       WHERE user_id = auth.uid() AND role = 'admin'
+--     )
+--   );
+
+-- -- CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
+--   FOR INSERT WITH CHECK (
+--     EXISTS (
+--       SELECT 1 FROM sbs.pengguna 
+--       WHERE user_id = auth.uid() AND role = 'admin'
+--     )
+--   );
+
+CREATE POLICY sbs_admin_delete_pengguna ON sbs.pengguna
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin policies for pelanggan table  
+CREATE POLICY sbs_admin_write_pelanggan ON sbs.pelanggan
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
 create policy w_kasir_trx on transaksi for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
 create policy w_kasir_bayar on pembayaran for insert with check (exists (select 1 from pengguna where user_id=auth.uid() and role in ('kasir','admin')));
 
@@ -307,3 +369,310 @@ begin
     alter table sbs.produk drop column kategori;
   end if;
 end $$;
+
+
+--DISABLE RLS
+
+-- 1) Matikan RLS untuk semua tabel biasa (relkind='r') di schema sbs
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT n.nspname AS schema, c.relname AS tbl
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'sbs'
+      AND c.relkind = 'r'         -- only ordinary tables
+  LOOP
+    EXECUTE format('ALTER TABLE %I.%I DISABLE ROW LEVEL SECURITY;', r.schema, r.tbl);
+    EXECUTE format('ALTER TABLE %I.%I NO FORCE ROW LEVEL SECURITY;', r.schema, r.tbl);
+  END LOOP;
+END $$;
+
+-- 2) Cek statusnya
+SELECT n.nspname AS schema, c.relname AS table_name,
+       c.relrowsecurity AS rls_enabled,
+       c.relforcerowsecurity AS rls_forced
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'sbs' AND c.relkind='r'
+ORDER BY table_name;
+
+--Policy
+-- Bootstrap Admin and Fix RLS Policies for Pengguna Creation
+-- Run this in your Supabase SQL Editor
+
+-- STEP 1: Check current admin users
+SELECT id_pengguna, nama, email, role, user_id 
+FROM sbs.pengguna 
+WHERE role = 'admin';
+
+-- STEP 2: Get current authenticated user details
+SELECT 
+    auth.uid() as current_user_id,
+    auth.email() as current_email,
+    auth.role() as current_role;
+
+-- STEP 3: Temporarily disable RLS to insert/update admin user
+ALTER TABLE sbs.pengguna DISABLE ROW LEVEL SECURITY;
+
+-- STEP 4: Update existing user to be admin or insert if needed
+-- First, find the current user's record and make them admin
+UPDATE sbs.pengguna 
+SET role = 'admin', updated_at = NOW()
+WHERE user_id = auth.uid();
+
+-- If no record exists, you need to insert manually
+-- INSERT INTO sbs.pengguna (
+--     id_pengguna, 
+--     nama, 
+--     email, 
+--     role, 
+--     user_id, 
+--     created_at, 
+--     updated_at
+-- ) VALUES (
+--     '001-ADM',
+--     'Admin Bootstrap', 
+--     auth.email(),
+--     'admin',
+--     auth.uid(),
+--     NOW(),
+--     NOW()
+-- ) ON CONFLICT (id_pengguna) DO NOTHING;
+
+-- STEP 5: Re-enable RLS
+ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
+
+-- STEP 6: Create improved INSERT policy that allows admin to create users
+DROP POLICY IF EXISTS sbs_admin_insert_pengguna ON sbs.pengguna;
+
+CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
+  FOR INSERT WITH CHECK (
+    -- Allow if current user is admin
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+    OR 
+    -- Allow service_role for admin operations
+    auth.role() = 'service_role'
+  );
+
+-- STEP 7: Verify setup
+SELECT 'Bootstrap Complete' as status;
+
+SELECT id_pengguna, nama, email, role, user_id 
+FROM sbs.pengguna 
+WHERE role = 'admin';
+
+SELECT schemaname, tablename, policyname, cmd
+FROM pg_policies 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna'
+ORDER BY policyname;
+
+
+--Test basic
+-- Diagnose Supabase Schema and RLS Issues
+-- Run this in your Supabase SQL Editor to check current state
+
+-- 1. Check current search_path
+SHOW search_path;
+
+-- 2. Check if sbs schema exists
+SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'sbs';
+
+-- 3. Check if pengguna table exists in sbs schema
+SELECT table_name, table_schema 
+FROM information_schema.tables 
+WHERE table_name = 'pengguna';
+
+-- 4. Check RLS status on pengguna table
+SELECT schemaname, tablename, rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna';
+
+-- 5. Check existing RLS policies
+SELECT schemaname, tablename, policyname, cmd, permissive, qual, with_check
+FROM pg_policies 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna'
+ORDER BY policyname;
+
+-- 6. Check if user has proper permissions
+SELECT 
+    grantee, 
+    table_schema, 
+    table_name, 
+    privilege_type 
+FROM information_schema.role_table_grants 
+WHERE table_schema = 'sbs' AND table_name = 'pengguna';
+
+-- 7. Test basic select (this will show permission denied if RLS is blocking)
+SELECT * FROM sbs.pengguna LIMIT 1;
+
+-- Comprehensive fix for SBS schema and pengguna table
+-- Run this STEP BY STEP in your Supabase SQL Editor
+
+-- STEP 1: Check if data exists in public.pengguna vs sbs.pengguna
+SELECT 'PUBLIC SCHEMA' as schema_name, count(*) as row_count FROM sbs.pengguna
+UNION ALL
+SELECT 'SBS SCHEMA' as schema_name, count(*) as row_count FROM sbs.pengguna;
+
+-- STEP 2: If data is in public.pengguna, migrate it to sbs.pengguna
+-- First, ensure sbs.pengguna table exists (from database_setup.sql)
+-- Then copy data if needed:
+
+-- INSERT INTO sbs.pengguna (id_pengguna, nama, email, telepon, role, user_id, created_at, updated_at)
+-- SELECT id_pengguna, nama, email, telepon, role, user_id, created_at, updated_at 
+-- FROM public.pengguna
+-- ON CONFLICT (id_pengguna) DO NOTHING;
+
+-- STEP 3: Set default search path to include sbs first
+ALTER DATABASE postgres SET search_path TO sbs, public;
+
+-- STEP 4: Grant basic permissions to authenticated users
+GRANT USAGE ON SCHEMA sbs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sbs TO authenticated;
+
+-- STEP 5: Create comprehensive RLS policies for pengguna table
+-- Drop existing policies first
+DROP POLICY IF EXISTS sbs_read_all_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_update_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_insert_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_delete_pengguna ON sbs.pengguna;
+
+-- Enable RLS
+ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
+
+-- Read policy - any authenticated user can read
+CREATE POLICY sbs_read_all_pengguna ON sbs.pengguna
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Admin policies for write operations
+CREATE POLICY sbs_admin_update_pengguna ON sbs.pengguna
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY sbs_admin_delete_pengguna ON sbs.pengguna
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- STEP 6: Verify setup
+SELECT 'RLS Policies Created' as status;
+SELECT schemaname, tablename, policyname, cmd
+FROM pg_policies 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna'
+ORDER BY policyname;
+
+--Fix add pengguna 
+-- Quick fix for INSERT pengguna RLS policy issue
+-- This allows admin users to create new pengguna records
+-- Run this in your Supabase SQL Editor
+
+-- First, check current user and their role
+SELECT 
+    auth.uid() as current_user_id,
+    p.id_pengguna,
+    p.nama,
+    p.role
+FROM sbs.pengguna p 
+WHERE p.user_id = auth.uid();
+
+-- Fix: Update INSERT policy to be more permissive for admin operations
+DROP POLICY IF EXISTS sbs_admin_insert_pengguna ON sbs.pengguna;
+
+-- Option 1: Allow any authenticated admin to insert
+-- This checks if the current user has admin role OR if this is the first user being created
+CREATE POLICY sbs_admin_insert_pengguna ON sbs.pengguna
+  FOR INSERT WITH CHECK (
+    -- Allow if user is already an admin
+    EXISTS (
+      SELECT 1 FROM sbs.pengguna 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+    OR
+    -- Allow if this is the first user being created (bootstrap scenario)
+    NOT EXISTS (SELECT 1 FROM sbs.pengguna WHERE role = 'admin')
+    OR
+    -- Allow service role (for admin operations)
+    auth.role() = 'service_role'
+  );
+
+-- Alternative: Temporarily disable RLS for initial setup if needed
+-- ALTER TABLE sbs.pengguna DISABLE ROW LEVEL SECURITY;
+-- -- Insert your admin user manually
+-- -- Then re-enable RLS
+-- ALTER TABLE sbs.pengguna ENABLE ROW LEVEL SECURITY;
+
+-- Verify the policy
+SELECT schemaname, tablename, policyname, cmd, with_check
+FROM pg_policies 
+WHERE schemaname = 'sbs' AND tablename = 'pengguna' AND policyname = 'sbs_admin_insert_pengguna';
+
+-- Function to delete user from auth.users table by email
+CREATE OR REPLACE FUNCTION delete_user_by_email(user_email text)
+RETURNS void AS $$
+BEGIN
+  DELETE FROM auth.users WHERE email = user_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION delete_user_by_email(text) TO authenticated;
+
+-- ==== 0) Opsional: lihat definisi view sebelum di-drop (buat backup)
+-- select pg_get_viewdef('sbs.sbs_pengguna_view'::regclass, true);
+
+BEGIN;
+
+-- ==== 1) Drop view yang refer kolom user_id
+DROP VIEW IF EXISTS sbs.sbs_pengguna_view;
+
+-- ==== 2) Matikan RLS & drop policies yang nyantol ke user_id
+-- (kamu memang mau non-RLS, jadi sekalian bersih)
+ALTER TABLE sbs.produk       DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.transaksi    DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pembayaran   DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pelanggan    DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sbs.pengguna     DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS w_admin_produk           ON sbs.produk;
+DROP POLICY IF EXISTS sbs_write_admin_produk   ON sbs.produk;
+
+DROP POLICY IF EXISTS w_kasir_trx              ON sbs.transaksi;
+
+DROP POLICY IF EXISTS w_kasir_bayar            ON sbs.pembayaran;
+
+DROP POLICY IF EXISTS sbs_admin_write_pelanggan ON sbs.pelanggan;
+
+DROP POLICY IF EXISTS sbs_admin_update_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_delete_pengguna ON sbs.pengguna;
+DROP POLICY IF EXISTS sbs_admin_insert_pengguna ON sbs.pengguna;
+
+-- ==== 3) Baru drop kolom user_id
+ALTER TABLE sbs.pengguna
+  DROP COLUMN IF EXISTS user_id;
+
+COMMIT;
