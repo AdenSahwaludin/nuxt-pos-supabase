@@ -65,7 +65,8 @@
             </label>
             <input
               v-model="form.no_hp"
-              type="tel"
+              type="text"
+              inputmode="numeric"
               placeholder="081234567890"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               :class="
@@ -73,12 +74,13 @@
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : ''
               "
+              @input="onPhoneInput"
             />
             <div v-if="errors.no_hp" class="mt-1 text-sm text-red-600">
               {{ errors.no_hp }}
             </div>
             <div class="mt-1 text-xs text-gray-500">
-              Format: 08xxxxxxxxxx atau +62xxxxxxxxxx
+              Format: 08xxxxxxxxxx atau +62xxxxxxxxxx (hanya angka)
             </div>
           </div>
 
@@ -124,86 +126,95 @@
             </div>
           </div>
 
-          <!-- Status -->
+          <!-- Status (default Non-Aktif, disabled) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Status
             </label>
             <select
               v-model="form.aktif"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+              disabled
             >
-              <option :value="true">Aktif</option>
-              <option :value="false">Non-Aktif</option>
+              <option :value="false">Non-Aktif (Default)</option>
             </select>
+            <div class="mt-1 text-xs text-gray-500">
+              Status default untuk pelanggan baru
+            </div>
           </div>
 
-          <!-- Opsi Kredit -->
+          <!-- Pengaturan Kredit (otomatis berdasarkan Limit Kredit) -->
           <div class="border-t border-gray-200 pt-4">
             <h4 class="text-sm font-semibold text-gray-900 mb-3">
               Pengaturan Kredit
             </h4>
 
-            <!-- Allow Installment -->
-            <div class="flex items-center mb-3">
-              <input
-                id="allowInstallment"
-                v-model="form.allow_installment"
-                type="checkbox"
-                class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-              />
-              <label for="allowInstallment" class="ml-2 text-sm text-gray-700">
-                Boleh kredit/cicilan
-              </label>
-            </div>
-
             <!-- Credit Limit -->
-            <div v-if="form.allow_installment">
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Limit Kredit (Rp)
               </label>
               <input
-                v-model="form.credit_limit"
+                v-model.number="form.credit_limit"
                 type="number"
                 min="0"
                 step="50000"
-                placeholder="5000000"
+                placeholder="0"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               />
               <div class="mt-1 text-xs text-gray-500">
-                Maksimal kredit yang diizinkan
+                Kredit/cicilan aktif jika limit > 0
               </div>
             </div>
 
             <!-- Max Tenor -->
-            <div v-if="form.allow_installment" class="mt-3">
+            <div v-if="form.credit_limit > 0" class="mt-3">
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Tenor Maksimal (Bulan)
+                Tenor Maksimal (Bulan) <span class="text-red-500">*</span>
               </label>
               <select
                 v-model="form.max_tenor_bulan"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                :class="
+                  errors.max_tenor_bulan
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : ''
+                "
               >
                 <option value="3">3 Bulan</option>
                 <option value="6">6 Bulan</option>
                 <option value="12">12 Bulan</option>
                 <option value="24">24 Bulan</option>
               </select>
+              <div
+                v-if="errors.max_tenor_bulan"
+                class="mt-1 text-sm text-red-600"
+              >
+                {{ errors.max_tenor_bulan }}
+              </div>
             </div>
 
             <!-- Trust Score -->
-            <div v-if="form.allow_installment" class="mt-3">
+            <div v-if="form.credit_limit > 0" class="mt-3">
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Trust Score (1-100)
+                Trust Score (1-100) <span class="text-red-500">*</span>
               </label>
               <input
-                v-model="form.trust_score"
+                v-model.number="form.trust_score"
                 type="number"
                 min="1"
                 max="100"
                 placeholder="75"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                :class="
+                  errors.trust_score
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : ''
+                "
               />
+              <div v-if="errors.trust_score" class="mt-1 text-sm text-red-600">
+                {{ errors.trust_score }}
+              </div>
               <div class="mt-1 text-xs text-gray-500">
                 Skor kepercayaan untuk evaluasi kredit
               </div>
@@ -261,15 +272,14 @@ const emit = defineEmits<{
 // Reactive state
 const loading = ref(false);
 const submitError = ref("");
-const nextNumber = ref("P001");
+const nextNumber = ref("P");
 
 const form = reactive({
   nama: "",
   no_hp: "",
   email: "",
   alamat: "",
-  aktif: true,
-  allow_installment: false,
+  aktif: false, // default nonaktif
   credit_limit: 0,
   max_tenor_bulan: 3,
   trust_score: 75,
@@ -280,6 +290,8 @@ const errors = reactive({
   no_hp: "",
   email: "",
   alamat: "",
+  max_tenor_bulan: "",
+  trust_score: "",
 });
 
 // Computed properties
@@ -290,29 +302,104 @@ const generatedId = computed(() => {
 // Methods
 const getNextNumber = async () => {
   try {
-    // TODO: Get next number from API
-    // For now, simulate getting next available number
-    nextNumber.value = "P003"; // This would come from API
+    const { data, error } = await supabase
+      .schema("sbs")
+      .from("pelanggan")
+      .select("id_pelanggan")
+      .order("id_pelanggan", { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      const lastId = data[0].id_pelanggan;
+      const num = parseInt(lastId.slice(1), 10) + 1;
+      nextNumber.value = `P${num.toString().padStart(3, "0")}`;
+    } else {
+      nextNumber.value = "P001";
+    }
   } catch (error) {
     console.error("Error getting next number:", error);
     nextNumber.value = "P001";
   }
 };
 
+// Handle phone input: keep spaces visible while typing
+// Rules:
+// - If user types '+', auto-expand to '+628'
+// - For '+62' numbers: display '+62' + 3-digit provider (e.g. 812), then groups of 4 (e.g. +62812 1234 1234)
+// - For local numbers starting with '0': group every 4 digits (e.g. 0812 1234 1234)
+const onPhoneInput = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let value = input.value;
+
+  // Auto-expand single '+' to '+628'
+  if (value === "+") value = "+628";
+
+  // Keep only digits and optional leading '+'
+  value = value.replace(/[^\d+]/g, "");
+
+  let formatted = "";
+  if (value.startsWith("+")) {
+    // Ensure '+62' country code
+    if (!value.startsWith("+62")) {
+      value = "+62" + value.replace(/^\+/, "");
+    }
+    const digits = value.replace(/\D/g, ""); // e.g., 62812...
+    let rest = digits.slice(2); // drop '62'
+    // First block after +62 is provider (up to 3 digits, e.g., 812)
+    const firstBlock = rest.slice(0, 3);
+    let tail = rest.slice(3);
+    formatted = "+62" + firstBlock;
+    if (tail.length) {
+      const groups: string[] = [];
+      if (tail.length <= 4) {
+        groups.push(tail);
+      } else {
+        // Always take the first 4 digits
+        groups.push(tail.slice(0, 4));
+        tail = tail.slice(4);
+        // Then chunk by 4, but avoid a trailing 1-digit group by merging to 5
+        while (tail.length) {
+          if (tail.length === 5) {
+            groups.push(tail);
+            break;
+          }
+          groups.push(tail.slice(0, 4));
+          tail = tail.slice(4);
+        }
+      }
+      formatted += " " + groups.join(" ");
+    }
+  } else {
+    // Local format: group every 4 digits
+    const digits = value.replace(/\D/g, "");
+    const groups = digits.match(/.{1,4}/g) || (digits ? [digits] : []);
+    formatted = groups.join(" ");
+  }
+
+  // Persist formatted string so spaces remain visible
+  form.no_hp = formatted;
+  input.value = formatted;
+};
+
+// Load next ID on mount
+onMounted(() => {
+  getNextNumber();
+});
+
 const normalizePhoneNumber = (phone: string) => {
   // Remove all non-digit characters
   const cleaned = phone.replace(/\D/g, "");
-
-  // Convert to +62 format
-  if (cleaned.startsWith("08")) {
-    return `+62${cleaned.substring(1)}`;
-  } else if (cleaned.startsWith("62")) {
-    return `+${cleaned}`;
-  } else if (cleaned.startsWith("8")) {
-    return `+62${cleaned}`;
+  // Convert Indonesian country code to leading zero
+  if (cleaned.startsWith("62")) {
+    return "0" + cleaned.slice(2);
   }
-
-  return phone;
+  // Ensure leading zero
+  if (!cleaned.startsWith("0")) {
+    return "0" + cleaned;
+  }
+  return cleaned;
 };
 
 const validateForm = () => {
@@ -329,15 +416,31 @@ const validateForm = () => {
     isValid = false;
   }
 
+  // Minimum phone length
+  const digitsCount = form.no_hp.replace(/\D/g, "").length;
+  if (form.no_hp && digitsCount < 10) {
+    errors.no_hp = "Nomor HP minimal 10 digit";
+    isValid = false;
+  }
   // No HP validation (optional but must be valid if provided)
   if (form.no_hp) {
     const normalizedPhone = normalizePhoneNumber(form.no_hp);
-    if (!/^\+62[0-9]{9,13}$/.test(normalizedPhone)) {
+    // After normalization we expect a leading '0' local number with 10-14 digits
+    if (!/^0\d{9,13}$/.test(normalizedPhone)) {
       errors.no_hp = "Format nomor HP tidak valid";
       isValid = false;
-    } else {
-      // Update form with normalized phone
-      form.no_hp = normalizedPhone;
+    }
+  }
+
+  // Credit logic: tenor and trust score required if credit_limit > 0
+  if (form.credit_limit > 0) {
+    if (!form.max_tenor_bulan) {
+      errors.max_tenor_bulan = "Tenor wajib diisi jika kredit aktif";
+      isValid = false;
+    }
+    if (!form.trust_score || form.trust_score < 1 || form.trust_score > 100) {
+      errors.trust_score = "Trust score wajib diisi (1-100) jika kredit aktif";
+      isValid = false;
     }
   }
 
@@ -359,18 +462,19 @@ const handleSubmit = async () => {
   try {
     console.log("📝 Creating new pelanggan...");
 
-    // Prepare data for Supabase
+    // Normalize phone number on save
+    const normalizedPhone = normalizePhoneNumber(form.no_hp);
     const pelangganData = {
       id_pelanggan: generatedId.value,
       nama: form.nama,
       email: form.email || null,
-      telepon: form.no_hp || null,
+      telepon: normalizedPhone || null,
       alamat: form.alamat || null,
       aktif: form.aktif,
-      allow_installment: form.allow_installment,
-      credit_limit: form.allow_installment ? form.credit_limit : 0,
-      max_tenor_bulan: form.allow_installment ? form.max_tenor_bulan : 0,
-      trust_score: form.allow_installment ? form.trust_score : 0,
+      allow_installment: form.credit_limit > 0,
+      credit_limit: form.credit_limit,
+      max_tenor_bulan: form.credit_limit > 0 ? form.max_tenor_bulan : 0,
+      trust_score: form.credit_limit > 0 ? form.trust_score : 0,
     };
 
     console.log("📤 Sending data to Supabase:", pelangganData);
@@ -418,11 +522,6 @@ const handleSubmit = async () => {
     loading.value = false;
   }
 };
-
-// Lifecycle
-onMounted(() => {
-  getNextNumber();
-});
 </script>
 
 <style scoped>

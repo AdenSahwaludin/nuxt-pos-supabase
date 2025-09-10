@@ -70,6 +70,7 @@
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : ''
               "
+              @input="onPhoneInput"
             />
             <div v-if="errors.no_hp" class="mt-1 text-sm text-red-600">
               {{ errors.no_hp }}
@@ -291,20 +292,94 @@ const loadFormData = () => {
   form.trust_score = props.pelanggan.trust_score || 75;
 };
 
-const normalizePhoneNumber = (phone: string) => {
-  if (!phone) return "";
+// Keep spaces while typing and normalize to leading '0' on save
+const onPhoneInput = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let value = input.value;
 
-  const cleaned = phone.replace(/\D/g, "");
+  if (value === "+") value = "+628";
+  value = value.replace(/[^\d+]/g, "");
 
-  if (cleaned.startsWith("08")) {
-    return `+62${cleaned.substring(1)}`;
-  } else if (cleaned.startsWith("62")) {
-    return `+${cleaned}`;
-  } else if (cleaned.startsWith("8")) {
-    return `+62${cleaned}`;
+  let formatted = "";
+  if (value.startsWith("+")) {
+    if (!value.startsWith("+62")) {
+      value = "+62" + value.replace(/^\+/, "");
+    }
+    const digits = value.replace(/\D/g, "");
+    const rest = digits.slice(2);
+    const provider = rest.slice(0, 3);
+    let tail = rest.slice(3);
+    formatted = "+62" + provider;
+    if (tail.length) {
+      const groups: string[] = [];
+      if (tail.length <= 4) {
+        groups.push(tail);
+      } else {
+        groups.push(tail.slice(0, 4));
+        tail = tail.slice(4);
+        while (tail.length) {
+          if (tail.length === 5) {
+            groups.push(tail);
+            break;
+          }
+          groups.push(tail.slice(0, 4));
+          tail = tail.slice(4);
+        }
+      }
+      formatted += " " + groups.join(" ");
+    }
+  } else {
+    const digits = value.replace(/\D/g, "");
+    const groups = digits.match(/.{1,4}/g) || (digits ? [digits] : []);
+    formatted = groups.join(" ");
   }
 
-  return phone;
+  form.no_hp = formatted;
+  input.value = formatted;
+};
+
+const normalizePhoneNumber = (phone: string) => {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.startsWith("62")) return "0" + digits.slice(2);
+  if (!digits.startsWith("0")) return "0" + digits;
+  return digits;
+};
+
+// Format current value for display (used on mount)
+const formatDisplayPhone = (value: string) => {
+  if (!value) return "";
+  value = value.replace(/[^\d+]/g, "");
+  if (value === "+") value = "+628";
+  if (value.startsWith("+")) {
+    if (!value.startsWith("+62")) value = "+62" + value.replace(/^\+/, "");
+    const digits = value.replace(/\D/g, "");
+    const rest = digits.slice(2);
+    const provider = rest.slice(0, 3);
+    let tail = rest.slice(3);
+    let formatted = "+62" + provider;
+    if (tail.length) {
+      const groups: string[] = [];
+      if (tail.length <= 4) {
+        groups.push(tail);
+      } else {
+        groups.push(tail.slice(0, 4));
+        tail = tail.slice(4);
+        while (tail.length) {
+          if (tail.length === 5) {
+            groups.push(tail);
+            break;
+          }
+          groups.push(tail.slice(0, 4));
+          tail = tail.slice(4);
+        }
+      }
+      formatted += " " + groups.join(" ");
+    }
+    return formatted;
+  }
+  const digits = value.replace(/\D/g, "");
+  const groups = digits.match(/.{1,4}/g) || (digits ? [digits] : []);
+  return groups.join(" ");
 };
 
 const validateForm = () => {
@@ -324,11 +399,9 @@ const validateForm = () => {
   // No HP validation (optional but must be valid if provided)
   if (form.no_hp) {
     const normalizedPhone = normalizePhoneNumber(form.no_hp);
-    if (!/^\+62[0-9]{9,13}$/.test(normalizedPhone)) {
+    if (!/^0\d{9,13}$/.test(normalizedPhone)) {
       errors.no_hp = "Format nomor HP tidak valid";
       isValid = false;
-    } else {
-      form.no_hp = normalizedPhone;
     }
   }
 
@@ -354,7 +427,7 @@ const handleSubmit = async () => {
     const pelangganData = {
       nama: form.nama,
       email: form.email || null,
-      telepon: form.no_hp || null,
+      telepon: form.no_hp ? normalizePhoneNumber(form.no_hp) : null,
       alamat: form.alamat || null,
       aktif: form.aktif,
       allow_installment: form.allow_installment,
@@ -414,6 +487,9 @@ const handleSubmit = async () => {
 // Lifecycle
 onMounted(() => {
   loadFormData();
+  if (form.no_hp) {
+    form.no_hp = formatDisplayPhone(form.no_hp);
+  }
 });
 </script>
 

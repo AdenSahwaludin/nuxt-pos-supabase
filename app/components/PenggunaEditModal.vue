@@ -376,7 +376,7 @@ const handleSubmit = async () => {
     console.log("🔧 Updating pengguna:", props.pengguna.id_pengguna);
 
     // Prepare update data
-    const updateData = {
+    const updateData: any = {
       nama: form.nama,
       email: form.email,
       role: form.role,
@@ -385,7 +385,7 @@ const handleSubmit = async () => {
 
     // Add telepon if provided
     if (form.telepon) {
-      updateData.telepon = form.telepon;
+      updateData.telepon = normalizePhoneNumber(form.telepon);
     }
 
     // Update pengguna record
@@ -474,31 +474,69 @@ const handleSubmit = async () => {
 onMounted(() => {
   document.body.style.overflow = "hidden";
   loadFormData();
+  if (form.telepon) {
+    // Reuse formatter logic to format the current value
+    const fakeEvent = { target: { value: form.telepon } } as unknown as Event;
+    formatPhoneInput(fakeEvent);
+  }
 });
 
 onBeforeUnmount(() => {
   document.body.style.overflow = "";
 });
 
-// Format phone input to only allow numbers
-const formatPhoneInput = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  let value = target.value;
+// Normalize phone for storage: convert +62/62 to leading 0 local format
+const normalizePhoneNumber = (phone: string) => {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.startsWith("62")) return "0" + digits.slice(2);
+  if (!digits.startsWith("0")) return "0" + digits;
+  return digits;
+};
 
-  // Remove any non-numeric characters except + at the beginning
+// Format phone input with spacing and +62 rules
+const formatPhoneInput = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let value = input.value;
+
+  if (value === "+") value = "+628";
   value = value.replace(/[^\d+]/g, "");
 
-  // Only allow + at the beginning
-  if (value.includes("+") && !value.startsWith("+")) {
-    value = value.replace(/\+/g, "");
+  let formatted = "";
+  if (value.startsWith("+")) {
+    if (!value.startsWith("+62")) {
+      value = "+62" + value.replace(/^\+/, "");
+    }
+    const digits = value.replace(/\D/g, "");
+    const rest = digits.slice(2);
+    const provider = rest.slice(0, 3);
+    let tail = rest.slice(3);
+    formatted = "+62" + provider;
+    if (tail.length) {
+      const groups: string[] = [];
+      if (tail.length <= 4) {
+        groups.push(tail);
+      } else {
+        groups.push(tail.slice(0, 4));
+        tail = tail.slice(4);
+        while (tail.length) {
+          if (tail.length === 5) {
+            groups.push(tail);
+            break;
+          }
+          groups.push(tail.slice(0, 4));
+          tail = tail.slice(4);
+        }
+      }
+      formatted += " " + groups.join(" ");
+    }
+  } else {
+    const digits = value.replace(/\D/g, "");
+    const groups = digits.match(/.{1,4}/g) || (digits ? [digits] : []);
+    formatted = groups.join(" ");
   }
 
-  // If it starts with +, ensure it's +62
-  if (value.startsWith("+") && !value.startsWith("+62")) {
-    value = "+62" + value.substring(1).replace(/\+/g, "");
-  }
-
-  form.telepon = value;
+  form.telepon = formatted;
+  input.value = formatted;
 };
 </script>
 

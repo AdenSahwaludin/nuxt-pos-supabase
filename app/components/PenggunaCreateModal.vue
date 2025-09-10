@@ -436,6 +436,67 @@ const validateForm = () => {
   return isValid;
 };
 
+// Function to normalize phone number on save
+const normalizePhoneNumber = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("62")) {
+    return "0" + digits.slice(2);
+  }
+  if (!digits.startsWith("0")) {
+    return "0" + digits;
+  }
+  return digits;
+};
+
+// Format phone input: persist spaces while typing
+// - '+' auto-expands to '+628'
+// - '+62' numbers: '+62' + 3-digit provider then 4-digit groups
+// - Local starting with '0': group every 4 digits
+const formatPhoneInput = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let value = input.value;
+
+  if (value === "+") value = "+628";
+  value = value.replace(/[^\d+]/g, "");
+
+  let formatted = "";
+  if (value.startsWith("+")) {
+    if (!value.startsWith("+62")) {
+      value = "+62" + value.replace(/^\+/, "");
+    }
+    const digits = value.replace(/\D/g, ""); // e.g. 62812...
+    const rest = digits.slice(2); // drop country code '62'
+    const provider = rest.slice(0, 3);
+    let tail = rest.slice(3);
+    formatted = "+62" + provider;
+    if (tail.length) {
+      const groups: string[] = [];
+      if (tail.length <= 4) {
+        groups.push(tail);
+      } else {
+        groups.push(tail.slice(0, 4));
+        tail = tail.slice(4);
+        while (tail.length) {
+          if (tail.length === 5) {
+            groups.push(tail);
+            break;
+          }
+          groups.push(tail.slice(0, 4));
+          tail = tail.slice(4);
+        }
+      }
+      formatted += " " + groups.join(" ");
+    }
+  } else {
+    const digits = value.replace(/\D/g, "");
+    const groups = digits.match(/.{1,4}/g) || (digits ? [digits] : []);
+    formatted = groups.join(" ");
+  }
+
+  form.telepon = formatted;
+  input.value = formatted;
+};
+
 const handleSubmit = async () => {
   if (!validateForm()) return;
 
@@ -454,7 +515,7 @@ const handleSubmit = async () => {
       id_pengguna: generatedId.value,
       nama: form.nama,
       email: form.email,
-      telepon: form.telepon || null,
+      telepon: form.telepon ? normalizePhoneNumber(form.telepon) : null,
       role: form.role,
       kata_sandi: hashedPassword,
       created_at: new Date().toISOString(),
@@ -517,27 +578,6 @@ watch(
     form.idSuffix = newValue.toUpperCase();
   }
 );
-
-// Format phone input to only allow numbers
-const formatPhoneInput = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  let value = target.value;
-
-  // Remove any non-numeric characters except + at the beginning
-  value = value.replace(/[^\d+]/g, "");
-
-  // Only allow + at the beginning
-  if (value.includes("+") && !value.startsWith("+")) {
-    value = value.replace(/\+/g, "");
-  }
-
-  // If it starts with +, ensure it's +62
-  if (value.startsWith("+") && !value.startsWith("+62")) {
-    value = "+62" + value.substring(1).replace(/\+/g, "");
-  }
-
-  form.telepon = value;
-};
 
 // Lifecycle
 onMounted(() => {

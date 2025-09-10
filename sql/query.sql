@@ -676,3 +676,135 @@ ALTER TABLE sbs.pengguna
   DROP COLUMN IF EXISTS user_id;
 
 COMMIT;
+
+-- Salinan Dari database sekarang
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE sbs.kategori (
+  id_kategori smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  nama character varying NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT kategori_pkey PRIMARY KEY (id_kategori)
+);
+CREATE TABLE sbs.pelanggan (
+  id_pelanggan character varying NOT NULL CHECK (id_pelanggan::text ~ '^P[0-9]{3}$'::text),
+  nama character varying NOT NULL,
+  email character varying UNIQUE,
+  telepon character varying,
+  kota character varying,
+  alamat text,
+  aktif boolean NOT NULL DEFAULT true,
+  tanggal_daftar date DEFAULT CURRENT_DATE,
+  allow_installment boolean NOT NULL DEFAULT false,
+  credit_limit numeric NOT NULL DEFAULT 0.00,
+  max_tenor_bulan smallint NOT NULL DEFAULT 0,
+  trust_score numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT pelanggan_pkey PRIMARY KEY (id_pelanggan)
+);
+CREATE TABLE sbs.pembayaran (
+  id_pembayaran character NOT NULL,
+  id_transaksi character varying NOT NULL,
+  metode USER-DEFINED NOT NULL,
+  jumlah numeric NOT NULL CHECK (jumlah > 0::numeric),
+  tanggal timestamp with time zone NOT NULL DEFAULT now(),
+  keterangan character varying,
+  id_piutang character varying,
+  termin_ke smallint,
+  CONSTRAINT pembayaran_pkey PRIMARY KEY (id_pembayaran),
+  CONSTRAINT pembayaran_id_transaksi_fkey FOREIGN KEY (id_transaksi) REFERENCES sbs.transaksi(id_transaksi),
+  CONSTRAINT pembayaran_id_piutang_fkey FOREIGN KEY (id_piutang) REFERENCES sbs.piutang(id_piutang)
+);
+CREATE TABLE sbs.pengguna (
+  id_pengguna character NOT NULL CHECK (id_pengguna ~ '^[0-9]{3}-[A-Z]{2,4}$'::text),
+  nama character varying NOT NULL,
+  email character varying UNIQUE,
+  telepon character varying,
+  kata_sandi character,
+  role USER-DEFINED NOT NULL DEFAULT 'kasir'::sbs.user_role,
+  terakhir_login timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT pengguna_pkey PRIMARY KEY (id_pengguna)
+);
+CREATE TABLE sbs.piutang (
+  id_piutang character varying NOT NULL,
+  id_transaksi character varying NOT NULL UNIQUE,
+  id_pelanggan character varying NOT NULL,
+  tenor_bulan smallint NOT NULL CHECK (tenor_bulan > 0),
+  dp_amount numeric NOT NULL DEFAULT 0 CHECK (dp_amount >= 0::numeric),
+  principal numeric NOT NULL CHECK (principal >= 0::numeric),
+  bunga_persen numeric NOT NULL DEFAULT 0 CHECK (bunga_persen >= 0::numeric),
+  total_tagihan numeric NOT NULL CHECK (total_tagihan >= 0::numeric),
+  outstanding numeric NOT NULL CHECK (outstanding >= 0::numeric),
+  start_date date NOT NULL DEFAULT CURRENT_DATE,
+  end_date date,
+  jadwal jsonb NOT NULL CHECK (jsonb_typeof(jadwal) = 'array'::text),
+  status USER-DEFINED NOT NULL DEFAULT 'aktif'::sbs.ar_status,
+  approved_by character,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT piutang_pkey PRIMARY KEY (id_piutang),
+  CONSTRAINT piutang_id_pelanggan_fkey FOREIGN KEY (id_pelanggan) REFERENCES sbs.pelanggan(id_pelanggan),
+  CONSTRAINT piutang_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES sbs.pengguna(id_pengguna),
+  CONSTRAINT piutang_id_transaksi_fkey FOREIGN KEY (id_transaksi) REFERENCES sbs.transaksi(id_transaksi)
+);
+CREATE TABLE sbs.produk (
+  id_produk character NOT NULL,
+  nama character varying NOT NULL,
+  gambar character varying,
+  nomor_bpom character varying,
+  harga numeric NOT NULL CHECK (harga >= 0::numeric),
+  biaya_produk numeric NOT NULL DEFAULT 0 CHECK (biaya_produk >= 0::numeric),
+  stok integer NOT NULL DEFAULT 0,
+  batas_stok integer NOT NULL DEFAULT 0,
+  unit character varying DEFAULT 'pcs'::character varying,
+  pack_unit character varying DEFAULT 'karton'::character varying,
+  pack_size integer NOT NULL DEFAULT 1,
+  harga_pack numeric,
+  qty_tier1 integer,
+  harga_tier1 numeric,
+  harga_tier_qty integer,
+  harga_tier_pack numeric,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  id_kategori smallint NOT NULL,
+  CONSTRAINT produk_pkey PRIMARY KEY (id_produk),
+  CONSTRAINT produk_id_kategori_fkey FOREIGN KEY (id_kategori) REFERENCES sbs.kategori(id_kategori)
+);
+CREATE TABLE sbs.transaksi (
+  id_transaksi character varying NOT NULL,
+  id_pengguna character NOT NULL,
+  id_pelanggan character varying NOT NULL,
+  tanggal timestamp with time zone NOT NULL DEFAULT now(),
+  status USER-DEFINED NOT NULL DEFAULT 'menunggu'::sbs.trx_status,
+  total numeric NOT NULL CHECK (total >= 0::numeric),
+  diskon numeric CHECK (diskon IS NULL OR diskon >= 0::numeric),
+  pajak numeric CHECK (pajak IS NULL OR pajak >= 0::numeric),
+  biaya_pengiriman numeric DEFAULT 0 CHECK (biaya_pengiriman >= 0::numeric),
+  is_credit boolean NOT NULL DEFAULT false,
+  dp_amount numeric DEFAULT 0 CHECK (dp_amount >= 0::numeric),
+  tenor_bulan smallint,
+  due_date date,
+  outstanding numeric DEFAULT 0 CHECK (outstanding >= 0::numeric),
+  ar_status USER-DEFINED,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT transaksi_pkey PRIMARY KEY (id_transaksi),
+  CONSTRAINT transaksi_id_pengguna_fkey FOREIGN KEY (id_pengguna) REFERENCES sbs.pengguna(id_pengguna),
+  CONSTRAINT transaksi_id_pelanggan_fkey FOREIGN KEY (id_pelanggan) REFERENCES sbs.pelanggan(id_pelanggan)
+);
+CREATE TABLE sbs.transaksi_detail (
+  id_detail bigint NOT NULL DEFAULT nextval('sbs.transaksi_detail_id_detail_seq'::regclass),
+  id_transaksi character varying NOT NULL,
+  id_produk character NOT NULL,
+  jumlah integer NOT NULL CHECK (jumlah > 0),
+  harga_satuan numeric NOT NULL CHECK (harga_satuan >= 0::numeric),
+  subtotal numeric DEFAULT ((jumlah)::numeric * harga_satuan),
+  CONSTRAINT transaksi_detail_pkey PRIMARY KEY (id_detail),
+  CONSTRAINT transaksi_detail_id_produk_fkey FOREIGN KEY (id_produk) REFERENCES sbs.produk(id_produk),
+  CONSTRAINT transaksi_detail_id_transaksi_fkey FOREIGN KEY (id_transaksi) REFERENCES sbs.transaksi(id_transaksi)
+);
