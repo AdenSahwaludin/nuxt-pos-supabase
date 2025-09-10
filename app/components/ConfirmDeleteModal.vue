@@ -16,7 +16,7 @@
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
               <AlertTriangle :size="24" class="text-red-500 mr-3" />
-              Konfirmasi Hapus
+              {{ title || 'Konfirmasi Hapus' }}
             </h3>
             <button
               @click="$emit('cancel')"
@@ -37,31 +37,30 @@
               <Trash2 :size="32" class="text-red-600" />
             </div>
             <h4 class="text-lg font-medium text-gray-900 mb-2">
-              Hapus Pengguna?
+              {{ confirmTitle || `Hapus ${entityType}?` }}
             </h4>
             <p class="text-gray-600">
-              Anda yakin ingin menghapus pengguna
-              <span class="font-semibold text-gray-900">"{{ itemName }}"</span>?
+              {{ message || `Anda yakin ingin menghapus ${entityType.toLowerCase()} "${itemName}"?` }}
             </p>
           </div>
 
-          <!-- User Details -->
+          <!-- Item Details (if provided) -->
           <div v-if="itemDetails" class="bg-gray-50 rounded-lg p-4 mb-6">
             <div class="flex items-center space-x-3">
               <div
                 class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center text-red-600 font-semibold text-sm"
               >
-                {{ getInitials(itemDetails.nama) }}
+                {{ getInitials(itemDetails) }}
               </div>
               <div>
                 <div class="text-sm font-medium text-gray-900">
-                  {{ itemDetails.nama }}
+                  {{ getPrimaryText(itemDetails) }}
                 </div>
                 <div class="text-sm text-gray-500">
-                  {{ itemDetails.email }} • {{ itemDetails.id_pengguna }}
+                  {{ getSecondaryText(itemDetails) }}
                 </div>
-                <div class="text-xs text-gray-400 mt-1">
-                  Role: {{ itemDetails.role }}
+                <div v-if="getTertiaryText(itemDetails)" class="text-xs text-gray-400 mt-1">
+                  {{ getTertiaryText(itemDetails) }}
                 </div>
               </div>
             </div>
@@ -79,27 +78,26 @@
                   Peringatan!
                 </h5>
                 <p class="text-sm text-red-700">
-                  Tindakan ini tidak dapat dibatalkan. Semua data terkait
-                  pengguna ini akan hilang secara permanen.
+                  {{ warningMessage || `Tindakan ini tidak dapat dibatalkan. Semua data terkait ${entityType.toLowerCase()} ini akan hilang secara permanen.` }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Confirmation Input -->
-          <div class="mb-6">
+          <div v-if="requireConfirmation" class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Ketik
-              <span class="font-mono bg-gray-100 px-1 rounded">HAPUS</span>
+              <span class="font-mono bg-gray-100 px-1 rounded">{{ confirmationKeyword }}</span>
               untuk mengonfirmasi:
             </label>
             <input
               v-model="confirmationText"
               type="text"
-              placeholder="Ketik HAPUS"
+              :placeholder="`Ketik ${confirmationKeyword}`"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono"
               :class="
-                confirmationText === 'HAPUS' ? 'border-red-300 bg-red-50' : ''
+                confirmationText === confirmationKeyword ? 'border-red-300 bg-red-50' : ''
               "
             />
           </div>
@@ -111,21 +109,21 @@
             <button
               @click="$emit('cancel')"
               class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
-              :disabled="loading"
+              :disabled="isLoading"
             >
               Batal
             </button>
             <button
               @click="handleConfirm"
-              :disabled="confirmationText !== 'HAPUS' || loading"
+              :disabled="shouldDisableConfirm"
               class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               <span
-                v-if="loading"
+                v-if="isLoading"
                 class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
               ></span>
               <Trash2 v-else :size="16" />
-              <span>{{ loading ? "Menghapus..." : "Hapus Pengguna" }}</span>
+              <span>{{ isLoading ? "Menghapus..." : (confirmText || `Hapus ${entityType}`) }}</span>
             </button>
           </div>
         </div>
@@ -136,22 +134,36 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { X, AlertTriangle, Trash2 } from "lucide-vue-next";
 
 interface Props {
+  // Basic props
+  title?: string;
+  entityType: string; // "Pengguna", "Kategori", "Pelanggan", "Produk", etc.
   itemName: string;
-  itemDetails?: {
-    nama: string;
-    email: string;
-    id_pengguna: string;
-    role: string;
-  };
-  loading?: boolean;
+  
+  // Content customization
+  message?: string;
+  confirmTitle?: string;
+  warningMessage?: string;
+  confirmText?: string;
+  
+  // Item details (optional for showing additional info)
+  itemDetails?: any;
+  
+  // Confirmation settings
+  requireConfirmation?: boolean;
+  confirmationKeyword?: string;
+  
+  // Loading state
+  isLoading?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  loading: false,
+  requireConfirmation: true,
+  confirmationKeyword: "HAPUS",
+  isLoading: false,
 });
 
 const emit = defineEmits<{
@@ -161,17 +173,117 @@ const emit = defineEmits<{
 
 const confirmationText = ref("");
 
-const getInitials = (name: string) => {
-  if (!name) return "?";
-  const names = name.split(" ");
-  if (names.length > 1) {
-    return (names[0].charAt(0) + names[1].charAt(0)).toUpperCase();
+// Computed property to determine if confirm button should be disabled
+const shouldDisableConfirm = computed(() => {
+  if (props.isLoading) return true;
+  if (props.requireConfirmation) {
+    return confirmationText.value !== props.confirmationKeyword;
   }
-  return names[0].charAt(0).toUpperCase();
+  return false;
+});
+
+// Helper functions to extract display text from itemDetails
+const getInitials = (itemDetails: any) => {
+  if (!itemDetails) return "?";
+  
+  // For different entity types, extract initials differently
+  if (props.entityType === "Pengguna") {
+    if (itemDetails.id_pengguna) {
+      const parts = itemDetails.id_pengguna.split("-");
+      return parts.length > 1 ? parts[1] : parts[0];
+    }
+    if (itemDetails.nama) {
+      const names = itemDetails.nama.split(" ");
+      return names.length > 1 
+        ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
+        : names[0].charAt(0).toUpperCase();
+    }
+  }
+  
+  if (props.entityType === "Pelanggan") {
+    if (itemDetails.id_pelanggan?.startsWith("P")) {
+      return itemDetails.id_pelanggan.substring(1);
+    }
+    if (itemDetails.nama) {
+      const names = itemDetails.nama.split(" ");
+      return names.length > 1 
+        ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
+        : names[0].charAt(0).toUpperCase();
+    }
+  }
+  
+  if (props.entityType === "Kategori") {
+    if (itemDetails.nama) {
+      return itemDetails.nama
+        .split(" ")
+        .map((word: string) => word.charAt(0))
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+  }
+  
+  // Default fallback
+  if (itemDetails.nama) {
+    return itemDetails.nama.charAt(0).toUpperCase();
+  }
+  
+  return "?";
+};
+
+const getPrimaryText = (itemDetails: any) => {
+  return itemDetails?.nama || itemDetails?.title || props.itemName || "-";
+};
+
+const getSecondaryText = (itemDetails: any) => {
+  if (props.entityType === "Pengguna") {
+    const parts = [];
+    if (itemDetails?.email) parts.push(itemDetails.email);
+    if (itemDetails?.id_pengguna) parts.push(itemDetails.id_pengguna);
+    return parts.join(" • ") || "-";
+  }
+  
+  if (props.entityType === "Pelanggan") {
+    const parts = [];
+    if (itemDetails?.email) parts.push(itemDetails.email);
+    if (itemDetails?.id_pelanggan) parts.push(itemDetails.id_pelanggan);
+    if (itemDetails?.telepon) parts.push(itemDetails.telepon);
+    return parts.join(" • ") || "-";
+  }
+  
+  if (props.entityType === "Kategori") {
+    return itemDetails?.id_kategori ? `ID: ${itemDetails.id_kategori}` : "-";
+  }
+  
+  // Default fallback
+  return itemDetails?.id || itemDetails?.code || "-";
+};
+
+const getTertiaryText = (itemDetails: any) => {
+  if (props.entityType === "Pengguna") {
+    return itemDetails?.role ? `Role: ${itemDetails.role}` : null;
+  }
+  
+  if (props.entityType === "Pelanggan") {
+    const parts = [];
+    if (itemDetails?.kota) parts.push(`Kota: ${itemDetails.kota}`);
+    if (itemDetails?.allow_installment) parts.push("Kredit diizinkan");
+    return parts.join(" • ") || null;
+  }
+  
+  if (props.entityType === "Kategori") {
+    const parts = [];
+    if (itemDetails?.total_products !== undefined) {
+      parts.push(`${itemDetails.total_products} produk`);
+    }
+    return parts.join(" • ") || null;
+  }
+  
+  return null;
 };
 
 const handleConfirm = () => {
-  if (confirmationText.value === "HAPUS") {
+  if (!shouldDisableConfirm.value) {
     emit("confirm");
   }
 };

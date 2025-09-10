@@ -388,9 +388,10 @@
 
     <ConfirmDeleteModal
       v-if="showDeleteModal && pendingDeletePengguna"
+      entity-type="Pengguna"
       :item-name="pendingDeletePengguna.nama"
       :item-details="pendingDeletePengguna"
-      :loading="deleteLoading"
+      :is-loading="deleteLoading"
       @confirm="confirmDeletePengguna"
       @cancel="cancelDeletePengguna"
     />

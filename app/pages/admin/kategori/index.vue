@@ -407,11 +407,13 @@
 
     <ConfirmDeleteModal
       v-if="showDeleteModal"
-      :isOpen="showDeleteModal"
-      :title="`Hapus Kategori '${selectedCategory?.nama}'`"
+      entity-type="Kategori"
+      :item-name="selectedCategory?.nama || ''"
+      :item-details="selectedCategory"
       :message="deleteMessage"
-      :confirmText="confirmDeleteText"
-      :isLoading="deleteLoading"
+      :confirm-text="confirmDeleteText"
+      :is-loading="deleteLoading"
+      :require-confirmation="confirmDeleteText === 'Hapus Kategori'"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
     />

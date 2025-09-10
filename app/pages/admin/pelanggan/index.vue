@@ -445,6 +445,16 @@
       @close="showDetailModal = false"
       @edit="editPelanggan"
     />
+
+    <ConfirmDeleteModal
+      v-if="showDeleteModal && pelangganToDelete"
+      entityType="Pelanggan"
+      :itemName="pelangganToDelete.nama"
+      :itemDetails="pelangganToDelete"
+      :isLoading="isDeleting"
+      @confirm="confirmDeletePelanggan"
+      @cancel="cancelDeletePelanggan"
+    />
   </div>
 </template>
 
@@ -507,12 +517,15 @@ const selectedPelanggan = ref<Pelanggan | null>(null);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
+const showDeleteModal = ref(false);
+const pelangganToDelete = ref<Pelanggan | null>(null);
+const isDeleting = ref(false);
 
 // Prevent background scroll when modals open
 watch(
-  [showCreateModal, showEditModal, showDetailModal],
-  ([create, edit, detail]) => {
-    document.body.style.overflow = create || edit || detail ? "hidden" : "";
+  [showCreateModal, showEditModal, showDetailModal, showDeleteModal],
+  ([create, edit, detail, deleteModal]) => {
+    document.body.style.overflow = create || edit || detail || deleteModal ? "hidden" : "";
   }
 );
 
@@ -743,47 +756,57 @@ const editPelanggan = (pelanggan: Pelanggan) => {
   showEditModal.value = true;
 };
 
-const deletePelanggan = async (pelanggan: Pelanggan) => {
-  if (
-    confirm(`Apakah Anda yakin ingin menghapus pelanggan "${pelanggan.nama}"?`)
-  ) {
-    try {
-      console.log("🗑️ Deleting pelanggan:", pelanggan.id_pelanggan);
+const deletePelanggan = (pelanggan: Pelanggan) => {
+  pelangganToDelete.value = pelanggan;
+  showDeleteModal.value = true;
+};
 
-      // Delete from sbs.pelanggan table
-      const { error } = await supabase
-        .schema("sbs")
-        .from("pelanggan")
-        .delete()
-        .eq("id_pelanggan", pelanggan.id_pelanggan);
+const confirmDeletePelanggan = async () => {
+  if (!pelangganToDelete.value) return;
+  
+  const pelanggan = pelangganToDelete.value;
+  isDeleting.value = true;
 
-      if (error) {
-        console.error("❌ Error deleting pelanggan:", error);
-        throw new Error(`Gagal hapus pelanggan: ${error.message}`);
-      }
+  try {
+    console.log("🗑️ Deleting pelanggan:", pelanggan.id_pelanggan);
 
-      console.log("✅ Pelanggan deleted successfully");
+    // Delete from sbs.pelanggan table
+    const { error } = await supabase
+      .schema("sbs")
+      .from("pelanggan")
+      .delete()
+      .eq("id_pelanggan", pelanggan.id_pelanggan);
 
-      if (typeof window !== "undefined" && (window as any).$toast) {
-        (window as any).$toast.success(
-          `Pelanggan "${pelanggan.nama}" berhasil dihapus`,
-          "Berhasil"
-        );
-      }
-
-      // Reload data to get fresh data from server
-      loadPelanggan();
-    } catch (error: any) {
+    if (error) {
       console.error("❌ Error deleting pelanggan:", error);
-
-      if (typeof window !== "undefined" && (window as any).$toast) {
-        (window as any).$toast.error(
-          error.message || "Gagal menghapus pelanggan. Silakan coba lagi.",
-          "Gagal"
-        );
-      }
+      throw new Error(`Gagal hapus pelanggan: ${error.message}`);
     }
+
+    console.log("✅ Pelanggan deleted successfully");
+
+    const toast = useToast();
+    toast.success(`Pelanggan "${pelanggan.nama}" berhasil dihapus`);
+
+    // Close modal and reset state
+    showDeleteModal.value = false;
+    pelangganToDelete.value = null;
+
+    // Reload data to get fresh data from server
+    loadPelanggan();
+  } catch (error: any) {
+    console.error("❌ Error deleting pelanggan:", error);
+
+    const toast = useToast();
+    toast.error(error.message || "Gagal menghapus pelanggan. Silakan coba lagi.");
+  } finally {
+    isDeleting.value = false;
   }
+};
+
+const cancelDeletePelanggan = () => {
+  showDeleteModal.value = false;
+  pelangganToDelete.value = null;
+  isDeleting.value = false;
 };
 
 // Handle modal events
@@ -884,6 +907,15 @@ const formatDate = (dateString: string) => {
 
 // Lifecycle
 onMounted(() => {
+  // Reset modal states on page load
+  showCreateModal.value = false;
+  showEditModal.value = false;
+  showDetailModal.value = false;
+  showDeleteModal.value = false;
+  selectedPelanggan.value = null;
+  pelangganToDelete.value = null;
+  isDeleting.value = false;
+  
   loadPelanggan();
 });
 </script>
