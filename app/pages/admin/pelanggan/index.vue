@@ -525,7 +525,8 @@ const isDeleting = ref(false);
 watch(
   [showCreateModal, showEditModal, showDetailModal, showDeleteModal],
   ([create, edit, detail, deleteModal]) => {
-    document.body.style.overflow = create || edit || detail || deleteModal ? "hidden" : "";
+    document.body.style.overflow =
+      create || edit || detail || deleteModal ? "hidden" : "";
   }
 );
 
@@ -763,7 +764,7 @@ const deletePelanggan = (pelanggan: Pelanggan) => {
 
 const confirmDeletePelanggan = async () => {
   if (!pelangganToDelete.value) return;
-  
+
   const pelanggan = pelangganToDelete.value;
   isDeleting.value = true;
 
@@ -797,7 +798,9 @@ const confirmDeletePelanggan = async () => {
     console.error("❌ Error deleting pelanggan:", error);
 
     const toast = useToast();
-    toast.error(error.message || "Gagal menghapus pelanggan. Silakan coba lagi.");
+    toast.error(
+      error.message || "Gagal menghapus pelanggan. Silakan coba lagi."
+    );
   } finally {
     isDeleting.value = false;
   }
@@ -915,7 +918,7 @@ onMounted(() => {
   selectedPelanggan.value = null;
   pelangganToDelete.value = null;
   isDeleting.value = false;
-  
+
   loadPelanggan();
 });
 </script>

@@ -16,7 +16,7 @@
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center">
               <AlertTriangle :size="24" class="text-red-500 mr-3" />
-              {{ title || 'Konfirmasi Hapus' }}
+              {{ title || "Konfirmasi Hapus" }}
             </h3>
             <button
               @click="$emit('cancel')"
@@ -40,7 +40,10 @@
               {{ confirmTitle || `Hapus ${entityType}?` }}
             </h4>
             <p class="text-gray-600">
-              {{ message || `Anda yakin ingin menghapus ${entityType.toLowerCase()} "${itemName}"?` }}
+              {{
+                message ||
+                `Anda yakin ingin menghapus ${entityType.toLowerCase()} "${itemName}"?`
+              }}
             </p>
           </div>
 
@@ -59,7 +62,10 @@
                 <div class="text-sm text-gray-500">
                   {{ getSecondaryText(itemDetails) }}
                 </div>
-                <div v-if="getTertiaryText(itemDetails)" class="text-xs text-gray-400 mt-1">
+                <div
+                  v-if="getTertiaryText(itemDetails)"
+                  class="text-xs text-gray-400 mt-1"
+                >
                   {{ getTertiaryText(itemDetails) }}
                 </div>
               </div>
@@ -78,7 +84,10 @@
                   Peringatan!
                 </h5>
                 <p class="text-sm text-red-700">
-                  {{ warningMessage || `Tindakan ini tidak dapat dibatalkan. Semua data terkait ${entityType.toLowerCase()} ini akan hilang secara permanen.` }}
+                  {{
+                    warningMessage ||
+                    `Tindakan ini tidak dapat dibatalkan. Semua data terkait ${entityType.toLowerCase()} ini akan hilang secara permanen.`
+                  }}
                 </p>
               </div>
             </div>
@@ -88,7 +97,9 @@
           <div v-if="requireConfirmation" class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Ketik
-              <span class="font-mono bg-gray-100 px-1 rounded">{{ confirmationKeyword }}</span>
+              <span class="font-mono bg-gray-100 px-1 rounded">{{
+                confirmationKeyword
+              }}</span>
               untuk mengonfirmasi:
             </label>
             <input
@@ -97,7 +108,9 @@
               :placeholder="`Ketik ${confirmationKeyword}`"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono"
               :class="
-                confirmationText === confirmationKeyword ? 'border-red-300 bg-red-50' : ''
+                confirmationText === confirmationKeyword
+                  ? 'border-red-300 bg-red-50'
+                  : ''
               "
             />
           </div>
@@ -123,7 +136,11 @@
                 class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
               ></span>
               <Trash2 v-else :size="16" />
-              <span>{{ isLoading ? "Menghapus..." : (confirmText || `Hapus ${entityType}`) }}</span>
+              <span>{{
+                isLoading
+                  ? "Menghapus..."
+                  : confirmText || `Hapus ${entityType}`
+              }}</span>
             </button>
           </div>
         </div>
@@ -142,20 +159,20 @@ interface Props {
   title?: string;
   entityType: string; // "Pengguna", "Kategori", "Pelanggan", "Produk", etc.
   itemName: string;
-  
+
   // Content customization
   message?: string;
   confirmTitle?: string;
   warningMessage?: string;
   confirmText?: string;
-  
+
   // Item details (optional for showing additional info)
   itemDetails?: any;
-  
+
   // Confirmation settings
   requireConfirmation?: boolean;
   confirmationKeyword?: string;
-  
+
   // Loading state
   isLoading?: boolean;
 }
@@ -185,7 +202,7 @@ const shouldDisableConfirm = computed(() => {
 // Helper functions to extract display text from itemDetails
 const getInitials = (itemDetails: any) => {
   if (!itemDetails) return "?";
-  
+
   // For different entity types, extract initials differently
   if (props.entityType === "Pengguna") {
     if (itemDetails.id_pengguna) {
@@ -194,24 +211,24 @@ const getInitials = (itemDetails: any) => {
     }
     if (itemDetails.nama) {
       const names = itemDetails.nama.split(" ");
-      return names.length > 1 
+      return names.length > 1
         ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
         : names[0].charAt(0).toUpperCase();
     }
   }
-  
+
   if (props.entityType === "Pelanggan") {
     if (itemDetails.id_pelanggan?.startsWith("P")) {
       return itemDetails.id_pelanggan.substring(1);
     }
     if (itemDetails.nama) {
       const names = itemDetails.nama.split(" ");
-      return names.length > 1 
+      return names.length > 1
         ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
         : names[0].charAt(0).toUpperCase();
     }
   }
-  
+
   if (props.entityType === "Kategori") {
     if (itemDetails.nama) {
       return itemDetails.nama
@@ -222,12 +239,12 @@ const getInitials = (itemDetails: any) => {
         .slice(0, 2);
     }
   }
-  
+
   // Default fallback
   if (itemDetails.nama) {
     return itemDetails.nama.charAt(0).toUpperCase();
   }
-  
+
   return "?";
 };
 
@@ -242,7 +259,7 @@ const getSecondaryText = (itemDetails: any) => {
     if (itemDetails?.id_pengguna) parts.push(itemDetails.id_pengguna);
     return parts.join(" • ") || "-";
   }
-  
+
   if (props.entityType === "Pelanggan") {
     const parts = [];
     if (itemDetails?.email) parts.push(itemDetails.email);
@@ -250,11 +267,11 @@ const getSecondaryText = (itemDetails: any) => {
     if (itemDetails?.telepon) parts.push(itemDetails.telepon);
     return parts.join(" • ") || "-";
   }
-  
+
   if (props.entityType === "Kategori") {
     return itemDetails?.id_kategori ? `ID: ${itemDetails.id_kategori}` : "-";
   }
-  
+
   // Default fallback
   return itemDetails?.id || itemDetails?.code || "-";
 };
@@ -263,14 +280,14 @@ const getTertiaryText = (itemDetails: any) => {
   if (props.entityType === "Pengguna") {
     return itemDetails?.role ? `Role: ${itemDetails.role}` : null;
   }
-  
+
   if (props.entityType === "Pelanggan") {
     const parts = [];
     if (itemDetails?.kota) parts.push(`Kota: ${itemDetails.kota}`);
     if (itemDetails?.allow_installment) parts.push("Kredit diizinkan");
     return parts.join(" • ") || null;
   }
-  
+
   if (props.entityType === "Kategori") {
     const parts = [];
     if (itemDetails?.total_products !== undefined) {
@@ -278,7 +295,7 @@ const getTertiaryText = (itemDetails: any) => {
     }
     return parts.join(" • ") || null;
   }
-  
+
   return null;
 };
 
