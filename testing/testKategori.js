@@ -1,20 +1,43 @@
 // Test script for kategori functionality
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = "https://your-project.supabase.co";
-const supabaseKey = "your-anon-key";
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Use the same configuration as the app
+const supabase = createClient(
+  "https://mjxhddjoaoekdlhnqbhy.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qeGhkZGpvYW9la2RsaG5xYmh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNTgxMTQsImV4cCI6MjA2OTczNDExNH0.XyPUtr2KgiZwMqbz_2hS0e-UTVqhS-ucZedo0pT9Qss",
+  {
+    db: {
+      schema: "sbs",
+    },
+  }
+);
 
 async function testKategori() {
   console.log("🧪 Testing Kategori CRUD operations...");
 
   try {
-    // Test 1: Create a new category
-    console.log("\n1. Testing category creation...");
-    const { data: newCategory, error: createError } = await supabase
-      .schema("sbs")
+    // Test 1: Check if kategori table exists
+    console.log("\n1. Testing kategori table access...");
+    const { data: categories, error: readError } = await supabase
       .from("kategori")
-      .insert([{ nama: "Test Category " + Date.now() }])
+      .select("*")
+      .limit(1);
+
+    if (readError) {
+      console.error("❌ Read error:", readError);
+      console.log(
+        "💡 Make sure kategori table exists and RLS policies are set"
+      );
+      return;
+    }
+    console.log("✅ Kategori table accessible");
+
+    // Test 2: Create a new category
+    console.log("\n2. Testing category creation...");
+    const testName = "Test Category " + Date.now();
+    const { data: newCategory, error: createError } = await supabase
+      .from("kategori")
+      .insert([{ nama: testName }])
       .select()
       .single();
 
@@ -24,24 +47,22 @@ async function testKategori() {
     }
     console.log("✅ Category created:", newCategory);
 
-    // Test 2: Read categories
-    console.log("\n2. Testing category reading...");
-    const { data: categories, error: readError } = await supabase
-      .schema("sbs")
+    // Test 3: Read categories
+    console.log("\n3. Testing category reading...");
+    const { data: allCategories, error: readError2 } = await supabase
       .from("kategori")
       .select("*")
       .limit(5);
 
-    if (readError) {
-      console.error("❌ Read error:", readError);
+    if (readError2) {
+      console.error("❌ Read error:", readError2);
       return;
     }
-    console.log("✅ Categories fetched:", categories.length);
+    console.log("✅ Categories fetched:", allCategories?.length || 0);
 
-    // Test 3: Update category
-    console.log("\n3. Testing category update...");
+    // Test 4: Update category
+    console.log("\n4. Testing category update...");
     const { data: updatedCategory, error: updateError } = await supabase
-      .schema("sbs")
       .from("kategori")
       .update({ nama: "Updated Test Category" })
       .eq("id_kategori", newCategory.id_kategori)
@@ -54,10 +75,9 @@ async function testKategori() {
     }
     console.log("✅ Category updated:", updatedCategory);
 
-    // Test 4: Get category with product count
-    console.log("\n4. Testing category with product stats...");
+    // Test 5: Get category with product count
+    console.log("\n5. Testing category with product stats...");
     const { data: products, error: productError } = await supabase
-      .schema("sbs")
       .from("produk")
       .select("harga, stok")
       .eq("id_kategori", newCategory.id_kategori);
@@ -66,7 +86,7 @@ async function testKategori() {
       const jumlah_produk = products?.length || 0;
       const total_aset =
         products?.reduce(
-          (total, produk) => total + produk.harga * produk.stok,
+          (total, produk) => total + (produk.harga || 0) * (produk.stok || 0),
           0
         ) || 0;
 
@@ -74,12 +94,13 @@ async function testKategori() {
         jumlah_produk,
         total_aset,
       });
+    } else {
+      console.log("ℹ️ Product table not accessible or empty");
     }
 
-    // Test 5: Delete category
-    console.log("\n5. Testing category deletion...");
+    // Test 6: Delete category
+    console.log("\n6. Testing category deletion...");
     const { error: deleteError } = await supabase
-      .schema("sbs")
       .from("kategori")
       .delete()
       .eq("id_kategori", newCategory.id_kategori);
@@ -96,9 +117,5 @@ async function testKategori() {
   }
 }
 
-// Run tests if called directly
-if (require.main === module) {
-  testKategori();
-}
-
-module.exports = { testKategori };
+// Run the test
+testKategori();

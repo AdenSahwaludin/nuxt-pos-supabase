@@ -29,7 +29,7 @@
               ID Kategori:
             </div>
             <div class="text-lg font-bold text-gray-900">
-              {{ kategori.id_kategori }}
+              {{ kategori?.id_kategori || "-" }}
             </div>
           </div>
 
@@ -129,7 +129,7 @@ const errors = reactive({
 
 // Methods
 const loadFormData = () => {
-  form.nama = props.kategori.nama;
+  form.nama = props.kategori?.nama || "";
 };
 
 const validateForm = async () => {
@@ -141,19 +141,30 @@ const validateForm = async () => {
   let isValid = true;
 
   // Nama validation
-  if (!form.nama || form.nama.length < 3) {
+  if (!form.nama || form.nama.trim().length < 3) {
     errors.nama = "Nama kategori harus minimal 3 karakter";
     isValid = false;
   } else {
+    // Skip uniqueness check if nama not changed
+    const currentName = (props.kategori?.nama || "").trim();
+    const newName = form.nama.trim();
+    if (currentName.toLowerCase() === newName.toLowerCase()) {
+      return isValid; // already true so far
+    }
     // Check uniqueness (exclude current category)
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .schema("sbs")
         .from("kategori")
         .select("id_kategori")
-        .ilike("nama", form.nama)
-        .neq("id_kategori", props.kategori.id_kategori)
+        .ilike("nama", newName)
         .limit(1);
+
+      if (props.kategori?.id_kategori) {
+        q = q.neq("id_kategori", props.kategori.id_kategori);
+      }
+
+      const { data, error } = await q;
 
       if (error) throw error;
 
@@ -174,6 +185,11 @@ const validateForm = async () => {
 const handleSubmit = async () => {
   if (!(await validateForm())) return;
 
+  if (!props.kategori?.id_kategori) {
+    submitError.value = "Data kategori tidak valid";
+    return;
+  }
+
   loading.value = true;
   submitError.value = "";
 
@@ -193,7 +209,7 @@ const handleSubmit = async () => {
       .schema("sbs")
       .from("kategori")
       .update(kategoriData)
-      .eq("id_kategori", props.kategori.id_kategori)
+      .eq("id_kategori", props.kategori?.id_kategori || "")
       .select()
       .single();
 

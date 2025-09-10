@@ -1,695 +1,670 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+  <div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">
+          Manajemen Kategori Produk
+        </h1>
+        <p class="text-gray-600 mt-1">
+          Kelola kategori produk sistem Point of Sale
+        </p>
+      </div>
+      <button
+        @click="openCreateModal"
+        class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+      >
+        <Plus :size="20" />
+        <span>Tambah Kategori</span>
+      </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Kategori</h1>
-            <p class="text-gray-600 text-sm mt-1">
-              Kelola kategori produk untuk mengorganisir inventori Anda
+            <p class="text-sm font-medium text-gray-600">Total Kategori</p>
+            <p class="text-2xl font-bold text-gray-900">
+              {{ categories?.length || 0 }}
             </p>
           </div>
-          <div class="flex items-center space-x-3">
-            <!-- Export Button -->
-            <button
-              @click="exportData"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <Download :size="16" class="mr-2" />
-              Export
-            </button>
-            <!-- Add Category Button -->
-            <button
-              @click="openCreateModal"
-              class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <Plus :size="16" class="mr-2" />
-              Tambah Kategori
-            </button>
+          <div class="p-3 bg-blue-100 rounded-lg">
+            <FolderOpen :size="24" class="text-blue-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Total Produk</p>
+            <p class="text-2xl font-bold text-emerald-600">
+              {{ analytics?.totalProducts || 0 }}
+            </p>
+          </div>
+          <div class="p-3 bg-emerald-100 rounded-lg">
+            <Package :size="24" class="text-emerald-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Total Stok</p>
+            <p class="text-2xl font-bold text-orange-600">
+              {{ (analytics?.totalStock || 0).toLocaleString("id-ID") }}
+            </p>
+          </div>
+          <div class="p-3 bg-orange-100 rounded-lg">
+            <BarChart3 :size="24" class="text-orange-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-600">Nilai Aset</p>
+            <p class="text-2xl font-bold text-purple-600">
+              Rp {{ (analytics?.totalAsset || 0).toLocaleString("id-ID") }}
+            </p>
+          </div>
+          <div class="p-3 bg-purple-100 rounded-lg">
+            <TrendingUp :size="24" class="text-purple-600" />
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- Search & Filter Bar -->
-      <div
-        class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6"
-      >
-        <div class="flex flex-col sm:flex-row gap-4">
-          <!-- Search -->
-          <div class="flex-1">
-            <div class="relative">
-              <Search
-                :size="16"
-                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Cari kategori..."
-                class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                @input="debouncedSearch"
-              />
-            </div>
+    <!-- Filters & Search -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Search -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Cari Kategori</label
+          >
+          <div class="relative">
+            <Search
+              :size="20"
+              class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Cari berdasarkan nama kategori..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
           </div>
+        </div>
 
-          <!-- Sort -->
-          <div class="w-full sm:w-48">
-            <select
-              v-model="sortBy"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              @change="fetchCategories"
-            >
-              <option value="nama">Urutkan: Nama A-Z</option>
-              <option value="nama-desc">Urutkan: Nama Z-A</option>
-              <option value="jumlah_produk">Urutkan: Jumlah Produk</option>
-              <option value="updated_at">Urutkan: Terbaru</option>
-              <option value="updated_at-desc">Urutkan: Terlama</option>
-            </select>
-          </div>
+        <!-- Sort Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Urutkan Berdasarkan</label
+          >
+          <select
+            v-model="sorting.field"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            @change="applySorting"
+          >
+            <option value="nama">Nama</option>
+            <option value="created_at">Tanggal Dibuat</option>
+            <option value="updated_at">Terakhir Diupdate</option>
+            <option value="total_products">Jumlah Produk</option>
+          </select>
+        </div>
 
-          <!-- Page Size -->
-          <div class="w-full sm:w-32">
-            <select
-              v-model="pageSize"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              @change="changePageSize"
-            >
-              <option value="10">10 / halaman</option>
-              <option value="25">25 / halaman</option>
-              <option value="50">50 / halaman</option>
-            </select>
-          </div>
+        <!-- Sort Direction -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Urutan</label
+          >
+          <select
+            v-model="sorting.direction"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            @change="applySorting"
+          >
+            <option value="asc">A-Z / Lama-Baru</option>
+            <option value="desc">Z-A / Baru-Lama</option>
+          </select>
         </div>
       </div>
 
-      <!-- Bulk Actions -->
-      <div
-        v-if="selectedCategories.length > 0"
-        class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6"
-      >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <CheckSquare :size="16" class="text-emerald-600 mr-2" />
-            <span class="text-emerald-800 font-medium">
-              {{ selectedCategories.length }} kategori dipilih
-            </span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="bulkDelete"
-              class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+      <div class="flex items-center justify-between mt-6">
+        <div class="flex items-center space-x-4">
+          <!-- Bulk Actions -->
+          <div
+            v-if="selectedCategories && selectedCategories.length > 0"
+            class="flex items-center space-x-2"
+          >
+            <span class="text-sm text-gray-600"
+              >{{ selectedCategories.length }} kategori dipilih</span
             >
-              <Trash2 :size="14" class="mr-1" />
-              Hapus Terpilih
-            </button>
             <button
               @click="clearSelection"
-              class="inline-flex items-center px-3 py-1.5 bg-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-400"
+              class="text-sm text-gray-500 hover:text-gray-700 underline"
             >
-              Batal
+              Batal Pilih
             </button>
+            <button
+              @click="bulkDelete"
+              class="px-3 py-1 bg-red-100 text-red-600 rounded-md text-sm hover:bg-red-200 transition-colors"
+            >
+              <Trash2 :size="14" class="inline mr-1" />
+              Hapus Terpilih
+            </button>
+          </div>
+        </div>
+
+        <!-- Export Button -->
+        <button
+          @click="exportData"
+          class="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <Download :size="16" />
+          <span>Export</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div
+      class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+    >
+      <!-- Table Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">Daftar Kategori</h2>
+          <div class="flex items-center space-x-4 text-sm text-gray-600">
+            <span>{{ filteredCategories?.length || 0 }} kategori</span>
           </div>
         </div>
       </div>
 
-      <!-- Categories Table -->
-      <div
-        class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-      >
-        <!-- Loading State -->
-        <div v-if="loading" class="flex items-center justify-center py-12">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"
-          ></div>
-          <span class="ml-3 text-gray-600">Memuat kategori...</span>
-        </div>
-
-        <!-- Empty State -->
-        <div
-          v-else-if="categories.length === 0 && !searchQuery"
-          class="text-center py-12"
-        >
-          <Package :size="48" class="mx-auto text-gray-400 mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 mb-2">
-            Belum ada kategori
-          </h3>
-          <p class="text-gray-600 mb-4">
-            Mulai dengan membuat kategori pertama untuk mengorganisir produk
-            Anda
-          </p>
-          <button
-            @click="openCreateModal"
-            class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700"
-          >
-            <Plus :size="16" class="mr-2" />
-            Tambah Kategori
-          </button>
-        </div>
-
-        <!-- No Search Results -->
-        <div
-          v-else-if="categories.length === 0 && searchQuery"
-          class="text-center py-12"
-        >
-          <Search :size="48" class="mx-auto text-gray-400 mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 mb-2">
-            Tidak ada hasil
-          </h3>
-          <p class="text-gray-600">
-            Tidak ditemukan kategori dengan kata kunci "{{ searchQuery }}"
-          </p>
-        </div>
-
-        <!-- Table -->
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    :checked="isAllSelected"
-                    @change="toggleSelectAll"
-                    class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Nama Kategori
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Jumlah Produk
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Total Aset
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Terakhir Diperbarui
-                </th>
-                <th
-                  class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr
-                v-for="kategori in categories"
-                :key="kategori.id_kategori"
-                class="hover:bg-gray-50 cursor-pointer"
-                @click="openDetailModal(kategori)"
+      <!-- Table Content -->
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected"
+                  @change="toggleSelectAll"
+                  class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                />
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                :class="
+                  sorting.field === 'nama' ? 'bg-gray-100 text-gray-700' : ''
+                "
+                @click="sortBy('nama')"
               >
-                <td class="px-6 py-4 whitespace-nowrap" @click.stop>
-                  <input
-                    type="checkbox"
-                    :checked="selectedCategories.includes(kategori.id_kategori)"
-                    @change="toggleSelect(kategori.id_kategori)"
-                    class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">
-                    {{ kategori.nama }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">
-                    {{ kategori.jumlah_produk || 0 }} produk
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">
-                    {{ formatCurrency(kategori.total_aset || 0) }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">
-                    {{ formatDate(kategori.updated_at) }}
-                  </div>
-                </td>
-                <td
-                  class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-                  @click.stop
-                >
-                  <div class="flex items-center justify-end space-x-2">
-                    <button
-                      @click="openEditModal(kategori)"
-                      class="text-emerald-600 hover:text-emerald-900 p-1 rounded"
-                      title="Edit kategori"
-                    >
-                      <Edit :size="16" />
-                    </button>
-                    <button
-                      @click="confirmDelete(kategori)"
-                      class="text-red-600 hover:text-red-900 p-1 rounded"
-                      title="Hapus kategori"
-                    >
-                      <Trash2 :size="16" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div
-          v-if="totalPages > 1"
-          class="bg-gray-50 px-6 py-3 border-t border-gray-200"
-        >
-          <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-700">
-              Menampilkan {{ (currentPage - 1) * pageSize + 1 }} hingga
-              {{ Math.min(currentPage * pageSize, totalItems) }} dari
-              {{ totalItems }} kategori
-            </div>
-            <div class="flex items-center space-x-2">
-              <button
-                @click="currentPage = Math.max(1, currentPage - 1)"
-                :disabled="currentPage === 1"
-                class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                <div class="flex items-center space-x-1">
+                  <span>Nama Kategori</span>
+                  <component :is="getSortIcon('nama')" :size="14" />
+                </div>
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                <ChevronLeft :size="16" />
-              </button>
-
-              <template v-for="page in visiblePages" :key="page">
-                <button
-                  v-if="page !== '...'"
-                  @click="currentPage = page"
-                  :class="[
-                    'px-3 py-1 border rounded text-sm',
-                    page === currentPage
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'border-gray-300 hover:bg-gray-50',
-                  ]"
-                >
-                  {{ page }}
-                </button>
-                <span v-else class="px-2 text-gray-500">...</span>
-              </template>
-
-              <button
-                @click="currentPage = Math.min(totalPages, currentPage + 1)"
-                :disabled="currentPage === totalPages"
-                class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                Jumlah Produk
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                <ChevronRight :size="16" />
-              </button>
-            </div>
-          </div>
-        </div>
+                Total Stok
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Nilai Aset
+              </th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                :class="
+                  sorting.field === 'created_at'
+                    ? 'bg-gray-100 text-gray-700'
+                    : ''
+                "
+                @click="sortBy('created_at')"
+              >
+                <div class="flex items-center space-x-1">
+                  <span>Dibuat</span>
+                  <component :is="getSortIcon('created_at')" :size="14" />
+                </div>
+              </th>
+              <th
+                class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Aksi
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <!-- Loading Skeleton -->
+            <tr v-if="loading" v-for="i in 5" :key="i">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 w-4 rounded"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-32"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-16"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-20"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-24"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="animate-pulse bg-gray-200 h-4 rounded w-20"></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="flex items-center justify-center space-x-2">
+                  <div class="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                  <div class="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                  <div class="animate-pulse bg-gray-200 h-8 w-8 rounded"></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Data Rows -->
+            <tr
+              v-else-if="filteredCategories && filteredCategories.length > 0"
+              v-for="category in filteredCategories"
+              :key="category?.id_kategori || Math.random().toString()"
+              class="hover:bg-gray-50"
+            >
+              <td class="px-6 py-4 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  :value="category?.id_kategori || ''"
+                  v-model="selectedCategories"
+                  class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                />
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div
+                    class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 font-semibold text-sm mr-3"
+                  >
+                    {{ getCategoryInitials(category?.nama || "") }}
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ category?.nama || "Tanpa Nama" }}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                      ID: {{ category?.id_kategori || "-" }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ category?.total_products || 0 }} produk
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  {{ (category?.total_stock || 0).toLocaleString("id-ID") }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">
+                  Rp {{ (category?.total_asset || 0).toLocaleString("id-ID") }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ formatDate(category?.created_at) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="flex items-center justify-center space-x-2">
+                  <button
+                    @click="openDetailModal(category)"
+                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Lihat Detail"
+                  >
+                    <Eye :size="16" />
+                  </button>
+                  <button
+                    @click="openEditModal(category)"
+                    class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <Edit :size="16" />
+                  </button>
+                  <button
+                    @click="handleDelete(category)"
+                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Hapus"
+                  >
+                    <Trash2 :size="16" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Empty State -->
+            <tr v-else>
+              <td colspan="7" class="px-6 py-12 text-center">
+                <div class="flex flex-col items-center justify-center">
+                  <div
+                    class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
+                  >
+                    <FolderOpen :size="32" class="text-gray-400" />
+                  </div>
+                  <h3 class="text-lg font-medium text-gray-900 mb-2">
+                    Belum ada kategori
+                  </h3>
+                  <p class="text-gray-500 mb-6">
+                    Mulai dengan menambahkan kategori produk pertama Anda
+                  </p>
+                  <button
+                    @click="openCreateModal"
+                    class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    <Plus :size="16" class="mr-2" />
+                    Tambah Kategori
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
     <!-- Modals -->
     <KategoriCreateModal
       v-if="showCreateModal"
-      @close="closeCreateModal"
-      @created="handleCategoryCreated"
+      :isOpen="showCreateModal"
+      @close="showCreateModal = false"
+      @created="onCategoryCreated"
     />
 
     <KategoriEditModal
-      v-if="showEditModal && selectedCategory"
+      v-if="showEditModal"
+      :isOpen="showEditModal"
       :kategori="selectedCategory"
-      @close="closeEditModal"
-      @updated="handleCategoryUpdated"
+      @close="showEditModal = false"
+      @updated="onCategoryUpdated"
     />
 
     <KategoriDetailModal
-      v-if="showDetailModal && selectedCategory"
+      v-if="showDetailModal"
+      :isOpen="showDetailModal"
       :kategori="selectedCategory"
-      @close="closeDetailModal"
+      @close="showDetailModal = false"
     />
 
     <ConfirmDeleteModal
       v-if="showDeleteModal"
-      :title="deleteModalTitle"
-      :message="deleteModalMessage"
-      @close="closeDeleteModal"
-      @confirm="handleDelete"
+      :isOpen="showDeleteModal"
+      :title="`Hapus Kategori '${selectedCategory?.nama}'`"
+      :message="deleteMessage"
+      :confirmText="confirmDeleteText"
+      :isLoading="deleteLoading"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
     />
-
-    <!-- Toast Notifications -->
-    <AdminToast />
   </div>
 </template>
 
 <script setup lang="ts">
-// @ts-nocheck
-import { ref, reactive, computed, onMounted, watch } from "vue";
-import { supabase } from "~~/lib/supabaseClient";
-import { useToast } from "~~/composables/useToast";
 import {
   Plus,
   Search,
   Download,
+  FolderOpen,
+  Package,
+  BarChart3,
+  TrendingUp,
+  Eye,
   Edit,
   Trash2,
-  Package,
-  CheckSquare,
-  ChevronLeft,
-  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-vue-next";
+import { supabase } from "~~/lib/supabaseClient";
+import { ref, reactive, computed, onMounted, watch } from "vue";
+import { useToast } from "~~/composables/useToast";
 
-// Page Meta
+// Page meta
 definePageMeta({
   layout: "admin",
   middleware: "role",
+  auth: true,
+  requiredRole: "admin",
 });
+
+// Types
+interface Category {
+  id_kategori: string;
+  nama: string;
+  created_at: string;
+  updated_at: string;
+  total_products: number;
+  total_stock: number;
+  total_asset: number;
+}
+
+interface Product {
+  id_produk: string;
+  stok: number;
+  harga: number;
+}
 
 // Composables
 const toast = useToast();
 
-// State
-const loading = ref(false);
-const categories = ref([]);
+// Reactive data
+const categories = ref<Category[]>([]);
+const loading = ref(true);
 const searchQuery = ref("");
-const sortBy = ref("nama");
-const currentPage = ref(1);
-const pageSize = ref(10);
-const totalItems = ref(0);
-const selectedCategories = ref([]);
-
-// Modals
+const selectedCategories = ref<string[]>([]);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDetailModal = ref(false);
 const showDeleteModal = ref(false);
-const selectedCategory = ref(null);
+const selectedCategory = ref<Category | null>(null);
+const deleteLoading = ref(false);
+const deleteMessage = ref("");
+const confirmDeleteText = ref("Hapus");
 
-// Delete confirmation
-const deleteModalTitle = ref("");
-const deleteModalMessage = ref("");
-const deleteAction = ref(null);
+// Sorting state
+const sorting = reactive<{ field: keyof Category; direction: "asc" | "desc" }>({
+  field: "nama",
+  direction: "asc",
+});
 
 // Computed
-const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value));
+const analytics = computed(() => {
+  return {
+    totalProducts:
+      categories.value?.reduce(
+        (sum, cat) => sum + (cat.total_products || 0),
+        0
+      ) || 0,
+    totalStock:
+      categories.value?.reduce((sum, cat) => sum + (cat.total_stock || 0), 0) ||
+      0,
+    totalAsset:
+      categories.value?.reduce((sum, cat) => sum + (cat.total_asset || 0), 0) ||
+      0,
+  };
+});
+
+const filteredCategories = computed(() => {
+  let filtered = categories.value || [];
+
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter((category) => {
+      const name = (category?.nama || "").toLowerCase();
+      const id = String(category?.id_kategori ?? "").toLowerCase();
+      return name.includes(query) || id.includes(query);
+    });
+  }
+
+  return filtered;
+});
 
 const isAllSelected = computed(() => {
   return (
-    categories.value.length > 0 &&
-    selectedCategories.value.length === categories.value.length
+    filteredCategories.value.length > 0 &&
+    selectedCategories.value.length === filteredCategories.value.length
   );
-});
-
-const visiblePages = computed(() => {
-  const pages = [];
-  const total = totalPages.value;
-  const current = currentPage.value;
-
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i);
-    }
-  } else {
-    if (current <= 4) {
-      for (let i = 1; i <= 5; i++) pages.push(i);
-      pages.push("...");
-      pages.push(total);
-    } else if (current >= total - 3) {
-      pages.push(1);
-      pages.push("...");
-      for (let i = total - 4; i <= total; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      pages.push("...");
-      for (let i = current - 1; i <= current + 1; i++) pages.push(i);
-      pages.push("...");
-      pages.push(total);
-    }
-  }
-
-  return pages;
 });
 
 // Methods
 const fetchCategories = async () => {
-  loading.value = true;
   try {
-    // Get count first for pagination
-    let countQuery = supabase
-      .schema("sbs")
-      .from("kategori")
-      .select("*", { count: "exact", head: true });
+    loading.value = true;
 
-    if (searchQuery.value) {
-      countQuery = countQuery.ilike("nama", `%${searchQuery.value}%`);
+    // Fetch categories with product statistics
+    const { data: categoriesData, error: categoriesError } = await supabase
+      .from("kategori")
+      .select(
+        `
+        id_kategori,
+        nama,
+        created_at,
+        updated_at
+      `
+      )
+      .order(sorting.field, {
+        ascending: sorting.direction === "asc",
+      });
+
+    if (categoriesError) {
+      console.error("Error fetching categories:", categoriesError);
+      throw categoriesError;
     }
 
-    const { count } = await countQuery;
-    totalItems.value = count || 0;
-
-    // Main query for data
-    let query = supabase
-      .schema("sbs")
-      .from("kategori")
-      .select("id_kategori, nama, created_at, updated_at");
-
-    // Search
-    if (searchQuery.value) {
-      query = query.ilike("nama", `%${searchQuery.value}%`);
+    // Initialize empty array if no data
+    if (!categoriesData || categoriesData.length === 0) {
+      categories.value = [];
+      return;
     }
 
-    // Apply sorting
-    const [field, direction] = sortBy.value.includes("-desc")
-      ? [sortBy.value.replace("-desc", ""), false]
-      : [sortBy.value, true];
-
-    query = query.order(field, { ascending: direction });
-
-    // Pagination
-    const from = (currentPage.value - 1) * pageSize.value;
-    const to = from + pageSize.value - 1;
-    query = query.range(from, to);
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    // Get product stats for each category
+    // For each category, calculate statistics
     const categoriesWithStats = await Promise.all(
-      (data || []).map(async (kategori) => {
-        const { data: products, error: prodError } = await supabase
-          .schema("sbs")
-          .from("produk")
-          .select("harga, stok")
-          .eq("id_kategori", kategori.id_kategori);
-
-        if (prodError) {
-          console.warn("Error fetching products for category:", prodError);
+      categoriesData.map(async (category: any) => {
+        if (!category) {
           return {
-            ...kategori,
-            jumlah_produk: 0,
-            total_aset: 0,
+            id_kategori: "",
+            nama: "Tanpa Nama",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            total_products: 0,
+            total_stock: 0,
+            total_asset: 0,
           };
         }
 
-        const jumlah_produk = products?.length || 0;
-        const total_aset =
-          products?.reduce(
-            (total, produk) => total + produk.harga * produk.stok,
-            0
-          ) || 0;
+        try {
+          const { data: products } = await supabase
+            .from("produk")
+            .select("stok, harga")
+            .eq("id_kategori", category.id_kategori);
 
-        return {
-          ...kategori,
-          jumlah_produk,
-          total_aset,
-        };
+          const total_products = products?.length || 0;
+          const total_stock =
+            products?.reduce((sum: number, p: any) => sum + (p.stok || 0), 0) ||
+            0;
+          const total_asset =
+            products?.reduce(
+              (sum: number, p: any) => sum + (p.stok || 0) * (p.harga || 0),
+              0
+            ) || 0;
+
+          return {
+            id_kategori: category?.id_kategori || "",
+            nama: category?.nama || "Tanpa Nama",
+            created_at: category?.created_at || new Date().toISOString(),
+            updated_at: category?.updated_at || new Date().toISOString(),
+            total_products,
+            total_stock,
+            total_asset,
+          };
+        } catch (error) {
+          console.error(
+            "Error fetching products for category:",
+            category?.id_kategori,
+            error
+          );
+          return {
+            id_kategori: category?.id_kategori || "",
+            nama: category?.nama || "Tanpa Nama",
+            created_at: category?.created_at || new Date().toISOString(),
+            updated_at: category?.updated_at || new Date().toISOString(),
+            total_products: 0,
+            total_stock: 0,
+            total_asset: 0,
+          };
+        }
       })
     );
 
-    categories.value = categoriesWithStats;
+    categories.value = categoriesWithStats || [];
   } catch (error) {
     console.error("Error fetching categories:", error);
     toast.error("Gagal memuat data kategori");
+    categories.value = []; // Ensure it's always an array
   } finally {
     loading.value = false;
   }
 };
 
-const debouncedSearch = debounce(() => {
-  currentPage.value = 1;
-  fetchCategories();
-}, 300);
-
-const changePageSize = () => {
-  currentPage.value = 1;
-  fetchCategories();
-};
-
-// Modal handlers
-const openCreateModal = () => {
-  showCreateModal.value = true;
-};
-
-const closeCreateModal = () => {
-  showCreateModal.value = false;
-};
-
-const openEditModal = (kategori) => {
-  selectedCategory.value = kategori;
-  showEditModal.value = true;
-};
-
-const closeEditModal = () => {
-  showEditModal.value = false;
-  selectedCategory.value = null;
-};
-
-const openDetailModal = (kategori) => {
-  selectedCategory.value = kategori;
-  showDetailModal.value = true;
-};
-
-const closeDetailModal = () => {
-  showDetailModal.value = false;
-  selectedCategory.value = null;
-};
-
-// CRUD handlers
-const handleCategoryCreated = (newCategory) => {
-  toast.success("Kategori berhasil ditambahkan");
-  fetchCategories();
-  closeCreateModal();
-};
-
-const handleCategoryUpdated = (updatedCategory) => {
-  toast.success("Kategori berhasil diperbarui");
-  fetchCategories();
-  closeEditModal();
-};
-
-// Delete handlers
-const confirmDelete = (kategori) => {
-  selectedCategory.value = kategori;
-  deleteModalTitle.value = "Hapus Kategori";
-  deleteModalMessage.value = `Apakah Anda yakin ingin menghapus kategori "${kategori.nama}"? Tindakan ini tidak dapat dibatalkan.`;
-  deleteAction.value = "single";
-  showDeleteModal.value = true;
-};
-
-const bulkDelete = () => {
-  if (selectedCategories.value.length === 0) return;
-
-  deleteModalTitle.value = "Hapus Kategori Terpilih";
-  deleteModalMessage.value = `Apakah Anda yakin ingin menghapus ${selectedCategories.value.length} kategori yang dipilih? Tindakan ini tidak dapat dibatalkan.`;
-  deleteAction.value = "bulk";
-  showDeleteModal.value = true;
-};
-
-const handleDelete = async () => {
-  try {
-    if (deleteAction.value === "single") {
-      // Check if category has products
-      const { data: products, error: checkError } = await supabase
-        .schema("sbs")
-        .from("produk")
-        .select("id_produk")
-        .eq("id_kategori", selectedCategory.value.id_kategori)
-        .limit(1);
-
-      if (checkError) throw checkError;
-
-      if (products && products.length > 0) {
-        toast.error(
-          "Tidak dapat menghapus kategori yang masih memiliki produk"
-        );
-        closeDeleteModal();
-        return;
-      }
-
-      const { error } = await supabase
-        .schema("sbs")
-        .from("kategori")
-        .delete()
-        .eq("id_kategori", selectedCategory.value.id_kategori);
-
-      if (error) throw error;
-      toast.success("Kategori berhasil dihapus");
-    } else if (deleteAction.value === "bulk") {
-      // Check if any categories have products
-      const { data: productsCheck, error: checkError } = await supabase
-        .schema("sbs")
-        .from("produk")
-        .select("id_kategori")
-        .in("id_kategori", selectedCategories.value);
-
-      if (checkError) throw checkError;
-
-      if (productsCheck && productsCheck.length > 0) {
-        const categoriesWithProducts = [
-          ...new Set(productsCheck.map((p) => p.id_kategori)),
-        ];
-        toast.error(
-          `Tidak dapat menghapus ${categoriesWithProducts.length} kategori yang masih memiliki produk`
-        );
-        closeDeleteModal();
-        return;
-      }
-
-      const { error } = await supabase
-        .schema("sbs")
-        .from("kategori")
-        .delete()
-        .in("id_kategori", selectedCategories.value);
-
-      if (error) throw error;
-      toast.success(
-        `${selectedCategories.value.length} kategori berhasil dihapus`
-      );
-      selectedCategories.value = [];
-    }
-
-    fetchCategories();
-  } catch (error) {
-    console.error("Error deleting category:", error);
-    if (error.message?.includes("foreign key")) {
-      toast.error(
-        "Tidak dapat menghapus kategori yang masih digunakan oleh produk"
-      );
-    } else {
-      toast.error("Gagal menghapus kategori");
-    }
-  }
-
-  closeDeleteModal();
-};
-
-const closeDeleteModal = () => {
-  showDeleteModal.value = false;
-  selectedCategory.value = null;
-  deleteAction.value = null;
-};
-
-// Selection handlers
-const toggleSelect = (categoryId) => {
-  const index = selectedCategories.value.indexOf(categoryId);
-  if (index > -1) {
-    selectedCategories.value.splice(index, 1);
+const sortBy = (field: keyof Category) => {
+  if (sorting.field === field) {
+    sorting.direction = sorting.direction === "asc" ? "desc" : "asc";
   } else {
-    selectedCategories.value.push(categoryId);
+    sorting.field = field;
+    sorting.direction = "asc";
   }
+  applySorting();
+};
+
+const getSortIcon = (field: keyof Category) => {
+  if (sorting.field !== field) return ArrowUpDown;
+  return sorting.direction === "asc" ? ArrowUp : ArrowDown;
+};
+
+const applySorting = () => {
+  if (!categories.value || categories.value.length === 0) return;
+
+  categories.value.sort((a, b) => {
+    const aVal = a[sorting.field as keyof Category];
+    const bVal = b[sorting.field as keyof Category];
+
+    if (aVal === bVal) return 0;
+
+    const comparison = aVal < bVal ? -1 : 1;
+    return sorting.direction === "asc" ? comparison : -comparison;
+  });
 };
 
 const toggleSelectAll = () => {
+  if (!filteredCategories.value || filteredCategories.value.length === 0)
+    return;
+
   if (isAllSelected.value) {
     selectedCategories.value = [];
   } else {
-    selectedCategories.value = categories.value.map((cat) => cat.id_kategori);
+    selectedCategories.value = filteredCategories.value.map(
+      (cat) => cat.id_kategori
+    );
   }
 };
 
@@ -697,110 +672,211 @@ const clearSelection = () => {
   selectedCategories.value = [];
 };
 
-// Export functionality
-const exportData = async () => {
+const getCategoryInitials = (nama: string) => {
+  if (!nama) return "??";
+  return nama
+    .split(" ")
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return "-";
   try {
-    const { data, error } = await supabase.schema("sbs").from("kategori")
-      .select(`
-        nama,
-        produk:produk(count),
-        produk!inner(harga, stok),
-        updated_at
-      `);
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch (error) {
+    return "-";
+  }
+};
+
+// Modal functions
+const openCreateModal = () => {
+  showCreateModal.value = true;
+};
+
+const openEditModal = (category: Category) => {
+  if (!category || !category.id_kategori) return;
+  selectedCategory.value = category;
+  showEditModal.value = true;
+};
+
+const openDetailModal = (category: Category) => {
+  if (!category || !category.id_kategori) return;
+  selectedCategory.value = category;
+  showDetailModal.value = true;
+};
+
+const handleDelete = async (category: Category) => {
+  if (!category || !category.id_kategori) return;
+  selectedCategory.value = category;
+
+  // Check if category has products
+  const { data: products } = await supabase
+    .from("produk")
+    .select("id_produk")
+    .eq("id_kategori", category.id_kategori);
+
+  if (products && products.length > 0) {
+    deleteMessage.value = `Kategori ini memiliki ${products.length} produk. Hapus semua produk terlebih dahulu sebelum menghapus kategori.`;
+    confirmDeleteText.value = "Mengerti";
+  } else {
+    deleteMessage.value =
+      "Apakah Anda yakin ingin menghapus kategori ini? Tindakan ini tidak dapat dibatalkan.";
+    confirmDeleteText.value = "Hapus Kategori";
+  }
+
+  showDeleteModal.value = true;
+};
+
+const confirmDelete = async () => {
+  if (!selectedCategory.value?.id_kategori) return;
+
+  // Check again if category has products (prevent deletion)
+  const { data: products } = await supabase
+    .from("produk")
+    .select("id_produk")
+    .eq("id_kategori", selectedCategory.value.id_kategori);
+
+  if (products && products.length > 0) {
+    showDeleteModal.value = false;
+    return;
+  }
+
+  try {
+    deleteLoading.value = true;
+
+    const { error } = await supabase
+      .from("kategori")
+      .delete()
+      .eq("id_kategori", selectedCategory.value.id_kategori);
 
     if (error) throw error;
 
-    const csvData = data.map((kategori) => ({
-      "Nama Kategori": kategori.nama,
-      "Jumlah Produk": kategori.produk?.[0]?.count || 0,
-      "Total Aset":
-        kategori.produk?.reduce(
-          (total, produk) => total + produk.harga * produk.stok,
-          0
-        ) || 0,
-      "Terakhir Diperbarui": formatDate(kategori.updated_at),
-    }));
+    toast.success(
+      `Kategori '${
+        selectedCategory.value?.nama || "Tanpa Nama"
+      }' berhasil dihapus`
+    );
 
-    downloadCSV(csvData, "kategori-export.csv");
-    toast.success("Data berhasil diekspor");
+    await fetchCategories();
+    showDeleteModal.value = false;
   } catch (error) {
-    console.error("Error exporting data:", error);
-    toast.error("Gagal mengekspor data");
+    console.error("Error deleting category:", error);
+    toast.error("Gagal menghapus kategori");
+  } finally {
+    deleteLoading.value = false;
   }
 };
 
-// Utility functions
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(amount);
+const cancelDelete = () => {
+  showDeleteModal.value = false;
+  selectedCategory.value = null;
 };
 
-const formatDate = (dateString) => {
-  return new Intl.DateTimeFormat("id-ID", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(dateString));
+const bulkDelete = async () => {
+  if (selectedCategories.value.length === 0) return;
+
+  // Check if any selected categories have products
+  const { data: products } = await supabase
+    .from("produk")
+    .select("id_kategori")
+    .in("id_kategori", selectedCategories.value);
+
+  if (products && products.length > 0) {
+    toast.error(
+      "Beberapa kategori masih memiliki produk. Hapus produk terlebih dahulu."
+    );
+    return;
+  }
+
+  if (
+    confirm(`Hapus ${selectedCategories.value.length} kategori yang dipilih?`)
+  ) {
+    try {
+      const { error } = await supabase
+        .from("kategori")
+        .delete()
+        .in("id_kategori", selectedCategories.value);
+
+      if (error) throw error;
+
+      toast.success(
+        `${selectedCategories.value.length} kategori berhasil dihapus`
+      );
+
+      selectedCategories.value = [];
+      await fetchCategories();
+    } catch (error) {
+      console.error("Error bulk deleting categories:", error);
+      toast.error("Gagal menghapus kategori");
+    }
+  }
 };
 
-const downloadCSV = (data, filename) => {
-  const csv = convertToCSV(data);
-  const blob = new Blob([csv], { type: "text/csv" });
+const exportData = () => {
+  const csvContent = [
+    [
+      "ID Kategori",
+      "Nama",
+      "Jumlah Produk",
+      "Total Stok",
+      "Nilai Aset",
+      "Tanggal Dibuat",
+    ],
+    ...filteredCategories.value.map((cat) => [
+      cat?.id_kategori || "",
+      cat?.nama || "Tanpa Nama",
+      cat?.total_products || 0,
+      cat?.total_stock || 0,
+      cat?.total_asset || 0,
+      formatDate(cat?.created_at || ""),
+    ]),
+  ]
+    .map((row) => row.join(","))
+    .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv" });
   const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kategori-${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
   window.URL.revokeObjectURL(url);
 };
 
-const convertToCSV = (data) => {
-  if (!data.length) return "";
-
-  const headers = Object.keys(data[0]);
-  const csvContent = [
-    headers.join(","),
-    ...data.map((row) => headers.map((header) => `"${row[header]}"`).join(",")),
-  ].join("\n");
-
-  return csvContent;
+// Event handlers
+const onCategoryCreated = () => {
+  showCreateModal.value = false;
+  fetchCategories();
 };
 
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Watchers
-watch(currentPage, fetchCategories);
+const onCategoryUpdated = () => {
+  showEditModal.value = false;
+  fetchCategories();
+};
 
 // Lifecycle
 onMounted(() => {
+  // Reset all modal states
+  showCreateModal.value = false;
+  showEditModal.value = false;
+  showDetailModal.value = false;
+  showDeleteModal.value = false;
+
   fetchCategories();
 });
+
+// Watch for sorting changes
+watch(
+  () => [sorting.field, sorting.direction],
+  () => {
+    fetchCategories();
+  }
+);
 </script>
-
-<style scoped>
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

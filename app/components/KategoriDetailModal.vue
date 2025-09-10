@@ -13,10 +13,10 @@
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-lg font-semibold text-gray-900">
-                Detail Kategori: {{ kategori.nama }}
+                Detail Kategori: {{ kategori?.nama || "Tanpa Nama" }}
               </h3>
               <p class="text-sm text-gray-600 mt-1">
-                ID: {{ kategori.id_kategori }}
+                ID: {{ kategori?.id_kategori || "-" }}
               </p>
             </div>
             <button
@@ -175,13 +175,13 @@
                 <div class="flex justify-between">
                   <span class="text-gray-600">Dibuat:</span>
                   <span class="text-gray-900">{{
-                    formatDate(kategori.created_at)
+                    formatDate(kategori?.created_at)
                   }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-gray-600">Terakhir Diperbarui:</span>
                   <span class="text-gray-900">{{
-                    formatDate(kategori.updated_at)
+                    formatDate(kategori?.updated_at)
                   }}</span>
                 </div>
               </div>
@@ -282,6 +282,11 @@ const stockSummary = computed(() => {
 
 // Methods
 const fetchProducts = async () => {
+  if (!props.kategori?.id_kategori) {
+    console.warn("No kategori ID provided");
+    return;
+  }
+
   loading.value = true;
   try {
     const { data, error } = await supabase
@@ -310,15 +315,7 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-const formatDate = (dateString) => {
-  return new Intl.DateTimeFormat("id-ID", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(dateString));
-};
+const formatDate = (dateString) => {};
 
 // Lifecycle
 onMounted(() => {
