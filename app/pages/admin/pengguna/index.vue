@@ -398,7 +398,6 @@
 </template>
 
 <script setup lang="ts">
-import roleMiddleware from "~/middleware/role";
 import { supabase } from "~~/lib/supabaseClient";
 // @ts-nocheck
 import {
@@ -421,7 +420,7 @@ import { watch } from "vue";
 // Page meta
 definePageMeta({
   layout: "admin",
-  middleware: [roleMiddleware],
+  middleware: "role",
   auth: true,
   requiredRole: "admin",
 });
