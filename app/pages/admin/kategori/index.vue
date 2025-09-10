@@ -3,7 +3,9 @@
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Manajemen Kategori Produk</h1>
+        <h1 class="text-2xl font-bold text-gray-900">
+          Manajemen Kategori Produk
+        </h1>
         <p class="text-gray-600 mt-1">
           Kelola kategori produk sistem Point of Sale
         </p>
@@ -23,7 +25,9 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Total Kategori</p>
-            <p class="text-2xl font-bold text-gray-900">{{ categories.length }}</p>
+            <p class="text-2xl font-bold text-gray-900">
+              {{ categories.length }}
+            </p>
           </div>
           <div class="p-3 bg-blue-100 rounded-lg">
             <FolderOpen :size="24" class="text-blue-600" />
@@ -35,7 +39,9 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Total Produk</p>
-            <p class="text-2xl font-bold text-emerald-600">{{ analytics.totalProducts }}</p>
+            <p class="text-2xl font-bold text-emerald-600">
+              {{ analytics.totalProducts }}
+            </p>
           </div>
           <div class="p-3 bg-emerald-100 rounded-lg">
             <Package :size="24" class="text-emerald-600" />
@@ -47,7 +53,9 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Total Stok</p>
-            <p class="text-2xl font-bold text-orange-600">{{ analytics.totalStock.toLocaleString('id-ID') }}</p>
+            <p class="text-2xl font-bold text-orange-600">
+              {{ analytics.totalStock.toLocaleString("id-ID") }}
+            </p>
           </div>
           <div class="p-3 bg-orange-100 rounded-lg">
             <BarChart3 :size="24" class="text-orange-600" />
@@ -59,7 +67,9 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600">Nilai Aset</p>
-            <p class="text-2xl font-bold text-purple-600">Rp {{ analytics.totalAsset.toLocaleString('id-ID') }}</p>
+            <p class="text-2xl font-bold text-purple-600">
+              Rp {{ analytics.totalAsset.toLocaleString("id-ID") }}
+            </p>
           </div>
           <div class="p-3 bg-purple-100 rounded-lg">
             <TrendingUp :size="24" class="text-purple-600" />
@@ -73,7 +83,9 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Search -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Cari Kategori</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Cari Kategori</label
+          >
           <div class="relative">
             <Search
               :size="20"
@@ -90,7 +102,9 @@
 
         <!-- Sort Field -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan Berdasarkan</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Urutkan Berdasarkan</label
+          >
           <select
             v-model="sorting.field"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
@@ -105,7 +119,9 @@
 
         <!-- Sort Direction -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Urutan</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >Urutan</label
+          >
           <select
             v-model="sorting.direction"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
@@ -120,8 +136,13 @@
       <div class="flex items-center justify-between mt-6">
         <div class="flex items-center space-x-4">
           <!-- Bulk Actions -->
-          <div v-if="selectedCategories.length > 0" class="flex items-center space-x-2">
-            <span class="text-sm text-gray-600">{{ selectedCategories.length }} kategori dipilih</span>
+          <div
+            v-if="selectedCategories.length > 0"
+            class="flex items-center space-x-2"
+          >
+            <span class="text-sm text-gray-600"
+              >{{ selectedCategories.length }} kategori dipilih</span
+            >
             <button
               @click="clearSelection"
               class="text-sm text-gray-500 hover:text-gray-700 underline"
@@ -150,7 +171,9 @@
     </div>
 
     <!-- Data Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div
+      class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+    >
       <!-- Table Header -->
       <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
@@ -176,7 +199,9 @@
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                :class="sorting.field === 'nama' ? 'bg-gray-100 text-gray-700' : ''"
+                :class="
+                  sorting.field === 'nama' ? 'bg-gray-100 text-gray-700' : ''
+                "
                 @click="sortBy('nama')"
               >
                 <div class="flex items-center space-x-1">
@@ -184,18 +209,28 @@
                   <component :is="getSortIcon('nama')" :size="14" />
                 </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Jumlah Produk
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Total Stok
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Nilai Aset
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                :class="sorting.field === 'created_at' ? 'bg-gray-100 text-gray-700' : ''"
+                :class="
+                  sorting.field === 'created_at'
+                    ? 'bg-gray-100 text-gray-700'
+                    : ''
+                "
                 @click="sortBy('created_at')"
               >
                 <div class="flex items-center space-x-1">
@@ -203,7 +238,9 @@
                   <component :is="getSortIcon('created_at')" :size="14" />
                 </div>
               </th>
-              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Aksi
               </th>
             </tr>
@@ -277,12 +314,12 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">
-                  {{ category.total_stock?.toLocaleString('id-ID') || 0 }}
+                  {{ category.total_stock?.toLocaleString("id-ID") || 0 }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">
-                  Rp {{ category.total_asset?.toLocaleString('id-ID') || 0 }}
+                  Rp {{ category.total_asset?.toLocaleString("id-ID") || 0 }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -324,8 +361,12 @@
                   >
                     <FolderOpen :size="32" class="text-gray-400" />
                   </div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">Belum ada kategori</h3>
-                  <p class="text-gray-500 mb-6">Mulai dengan menambahkan kategori produk pertama Anda</p>
+                  <h3 class="text-lg font-medium text-gray-900 mb-2">
+                    Belum ada kategori
+                  </h3>
+                  <p class="text-gray-500 mb-6">
+                    Mulai dengan menambahkan kategori produk pertama Anda
+                  </p>
                   <button
                     @click="openCreateModal"
                     class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -390,6 +431,7 @@ import {
   ArrowDown,
 } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
+import { useToast } from "~~/composables/useToast";
 
 // Page meta
 definePageMeta({
@@ -442,9 +484,18 @@ const sorting = ref({
 // Computed
 const analytics = computed(() => {
   return {
-    totalProducts: categories.value.reduce((sum, cat) => sum + (cat.total_products || 0), 0),
-    totalStock: categories.value.reduce((sum, cat) => sum + (cat.total_stock || 0), 0),
-    totalAsset: categories.value.reduce((sum, cat) => sum + (cat.total_asset || 0), 0),
+    totalProducts: categories.value.reduce(
+      (sum, cat) => sum + (cat.total_products || 0),
+      0
+    ),
+    totalStock: categories.value.reduce(
+      (sum, cat) => sum + (cat.total_stock || 0),
+      0
+    ),
+    totalAsset: categories.value.reduce(
+      (sum, cat) => sum + (cat.total_asset || 0),
+      0
+    ),
   };
 });
 
@@ -454,9 +505,10 @@ const filteredCategories = computed(() => {
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter((category) =>
-      category.nama.toLowerCase().includes(query) ||
-      category.id_kategori.toLowerCase().includes(query)
+    filtered = filtered.filter(
+      (category) =>
+        category.nama.toLowerCase().includes(query) ||
+        category.id_kategori.toLowerCase().includes(query)
     );
   }
 
@@ -464,8 +516,10 @@ const filteredCategories = computed(() => {
 });
 
 const isAllSelected = computed(() => {
-  return filteredCategories.value.length > 0 && 
-         selectedCategories.value.length === filteredCategories.value.length;
+  return (
+    filteredCategories.value.length > 0 &&
+    selectedCategories.value.length === filteredCategories.value.length
+  );
 });
 
 // Methods
@@ -476,13 +530,17 @@ const fetchCategories = async () => {
     // Fetch categories with product statistics
     const { data: categoriesData, error: categoriesError } = await supabase
       .from("kategori")
-      .select(`
+      .select(
+        `
         id_kategori,
         nama,
         created_at,
         updated_at
-      `)
-      .order(sorting.value.field, { ascending: sorting.value.direction === "asc" });
+      `
+      )
+      .order(sorting.value.field, {
+        ascending: sorting.value.direction === "asc",
+      });
 
     if (categoriesError) throw categoriesError;
 
@@ -495,8 +553,14 @@ const fetchCategories = async () => {
           .eq("id_kategori", category.id_kategori);
 
         const total_products = products?.length || 0;
-        const total_stock = products?.reduce((sum: number, p: any) => sum + (p.stok || 0), 0) || 0;
-        const total_asset = products?.reduce((sum: number, p: any) => sum + ((p.stok || 0) * (p.harga || 0)), 0) || 0;
+        const total_stock =
+          products?.reduce((sum: number, p: any) => sum + (p.stok || 0), 0) ||
+          0;
+        const total_asset =
+          products?.reduce(
+            (sum: number, p: any) => sum + (p.stok || 0) * (p.harga || 0),
+            0
+          ) || 0;
 
         return {
           ...category,
@@ -518,7 +582,8 @@ const fetchCategories = async () => {
 
 const sortBy = (field: keyof Category) => {
   if (sorting.value.field === field) {
-    sorting.value.direction = sorting.value.direction === "asc" ? "desc" : "asc";
+    sorting.value.direction =
+      sorting.value.direction === "asc" ? "desc" : "asc";
   } else {
     sorting.value.field = field;
     sorting.value.direction = "asc";
@@ -535,9 +600,9 @@ const applySorting = () => {
   categories.value.sort((a, b) => {
     const aVal = a[sorting.value.field];
     const bVal = b[sorting.value.field];
-    
+
     if (aVal === bVal) return 0;
-    
+
     const comparison = aVal < bVal ? -1 : 1;
     return sorting.value.direction === "asc" ? comparison : -comparison;
   });
@@ -547,7 +612,9 @@ const toggleSelectAll = () => {
   if (isAllSelected.value) {
     selectedCategories.value = [];
   } else {
-    selectedCategories.value = filteredCategories.value.map(cat => cat.id_kategori);
+    selectedCategories.value = filteredCategories.value.map(
+      (cat) => cat.id_kategori
+    );
   }
 };
 
@@ -589,7 +656,7 @@ const openDetailModal = (category: Category) => {
 
 const handleDelete = async (category: Category) => {
   selectedCategory.value = category;
-  
+
   // Check if category has products
   const { data: products } = await supabase
     .from("produk")
@@ -600,10 +667,11 @@ const handleDelete = async (category: Category) => {
     deleteMessage.value = `Kategori ini memiliki ${products.length} produk. Hapus semua produk terlebih dahulu sebelum menghapus kategori.`;
     confirmDeleteText.value = "Mengerti";
   } else {
-    deleteMessage.value = "Apakah Anda yakin ingin menghapus kategori ini? Tindakan ini tidak dapat dibatalkan.";
+    deleteMessage.value =
+      "Apakah Anda yakin ingin menghapus kategori ini? Tindakan ini tidak dapat dibatalkan.";
     confirmDeleteText.value = "Hapus Kategori";
   }
-  
+
   showDeleteModal.value = true;
 };
 
@@ -632,7 +700,7 @@ const confirmDelete = async () => {
     if (error) throw error;
 
     toast.success(`Kategori '${selectedCategory.value.nama}' berhasil dihapus`);
-    
+
     await fetchCategories();
     showDeleteModal.value = false;
   } catch (error) {
@@ -658,11 +726,15 @@ const bulkDelete = async () => {
     .in("id_kategori", selectedCategories.value);
 
   if (products && products.length > 0) {
-    toast.error("Beberapa kategori masih memiliki produk. Hapus produk terlebih dahulu.");
+    toast.error(
+      "Beberapa kategori masih memiliki produk. Hapus produk terlebih dahulu."
+    );
     return;
   }
 
-  if (confirm(`Hapus ${selectedCategories.value.length} kategori yang dipilih?`)) {
+  if (
+    confirm(`Hapus ${selectedCategories.value.length} kategori yang dipilih?`)
+  ) {
     try {
       const { error } = await supabase
         .from("kategori")
@@ -671,8 +743,10 @@ const bulkDelete = async () => {
 
       if (error) throw error;
 
-      toast.success(`${selectedCategories.value.length} kategori berhasil dihapus`);
-      
+      toast.success(
+        `${selectedCategories.value.length} kategori berhasil dihapus`
+      );
+
       selectedCategories.value = [];
       await fetchCategories();
     } catch (error) {
@@ -684,22 +758,31 @@ const bulkDelete = async () => {
 
 const exportData = () => {
   const csvContent = [
-    ["ID Kategori", "Nama", "Jumlah Produk", "Total Stok", "Nilai Aset", "Tanggal Dibuat"],
-    ...filteredCategories.value.map(cat => [
+    [
+      "ID Kategori",
+      "Nama",
+      "Jumlah Produk",
+      "Total Stok",
+      "Nilai Aset",
+      "Tanggal Dibuat",
+    ],
+    ...filteredCategories.value.map((cat) => [
       cat.id_kategori,
       cat.nama,
       cat.total_products,
       cat.total_stock,
       cat.total_asset,
-      formatDate(cat.created_at)
-    ])
-  ].map(row => row.join(",")).join("\n");
+      formatDate(cat.created_at),
+    ]),
+  ]
+    .map((row) => row.join(","))
+    .join("\n");
 
   const blob = new Blob([csvContent], { type: "text/csv" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `kategori-${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `kategori-${new Date().toISOString().split("T")[0]}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
 };
