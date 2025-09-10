@@ -384,25 +384,29 @@
 
     <!-- Modals -->
     <KategoriCreateModal
+      v-if="showCreateModal"
       :isOpen="showCreateModal"
       @close="showCreateModal = false"
       @created="onCategoryCreated"
     />
 
     <KategoriEditModal
+      v-if="showEditModal"
       :isOpen="showEditModal"
-      :category="selectedCategory"
+      :kategori="selectedCategory"
       @close="showEditModal = false"
       @updated="onCategoryUpdated"
     />
 
     <KategoriDetailModal
+      v-if="showDetailModal"
       :isOpen="showDetailModal"
-      :category="selectedCategory"
+      :kategori="selectedCategory"
       @close="showDetailModal = false"
     />
 
     <ConfirmDeleteModal
+      v-if="showDeleteModal"
       :isOpen="showDeleteModal"
       :title="`Hapus Kategori '${selectedCategory?.nama}'`"
       :message="deleteMessage"
@@ -800,6 +804,13 @@ const onCategoryUpdated = () => {
 
 // Lifecycle
 onMounted(() => {
+  // Reset all modal states to ensure they don't open automatically
+  showCreateModal.value = false;
+  showEditModal.value = false;
+  showDetailModal.value = false;
+  showDeleteModal.value = false;
+  selectedCategory.value = null;
+
   fetchCategories();
 });
 
