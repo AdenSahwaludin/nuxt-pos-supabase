@@ -49,7 +49,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Cari berdasarkan nama, ID produk, atau nomor BPOM..."
+              placeholder="Cari berdasarkan nama, barcode EAN-13, atau nomor BPOM..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
@@ -164,7 +164,7 @@
             </p>
           </div>
           <div class="p-3 bg-emerald-100 rounded-lg">
-            <DollarSign :size="24" class="text-emerald-600" />
+            <Coins :size="24" class="text-emerald-600" />
           </div>
         </div>
       </div>
@@ -248,7 +248,7 @@
                 @click="sortByColumn('id_produk')"
               >
                 <div class="flex items-center space-x-1">
-                  <span>ID/SKU Produk</span>
+                  <span>Barcode EAN-13</span>
                   <component
                     :is="getSortIcon('id_produk')"
                     :size="14"
@@ -270,9 +270,17 @@
                 </div>
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                @click="sortByColumn('kategori')"
               >
-                Kategori
+                <div class="flex items-center space-x-1">
+                  <span>Kategori</span>
+                  <component
+                    :is="getSortIcon('kategori')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
+                </div>
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -301,9 +309,17 @@
                 </div>
               </th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                @click="sortByColumn('stok')"
               >
-                Status
+                <div class="flex items-center space-x-1">
+                  <span>Status</span>
+                  <component
+                    :is="getSortIcon('stok')"
+                    :size="14"
+                    class="text-gray-400"
+                  />
+                </div>
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -671,7 +687,7 @@ import {
   Package,
   AlertTriangle,
   XCircle,
-  DollarSign,
+  Coins,
   Upload,
   Download,
   ChevronLeft,
@@ -826,8 +842,14 @@ const produkList = computed(() => {
 
   // Apply sorting
   result.sort((a, b) => {
-    const aVal = a[sortBy.value] || "";
-    const bVal = b[sortBy.value] || "";
+    let aVal = a[sortBy.value] || "";
+    let bVal = b[sortBy.value] || "";
+
+    // Handle special sorting cases
+    if (sortBy.value === "kategori") {
+      aVal = a.kategori_nama || a.kategori || "";
+      bVal = b.kategori_nama || b.kategori || "";
+    }
 
     let comparison = 0;
     if (typeof aVal === "string" && typeof bVal === "string") {

@@ -30,38 +30,45 @@
         <!-- Content -->
         <form @submit.prevent="handleSubmit" class="p-6 space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- SKU -->
+            <!-- Barcode EAN-13 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                SKU <span class="text-red-500">*</span>
+                Barcode EAN-13 <span class="text-red-500">*</span>
               </label>
               <input
-                v-model="form.sku"
+                v-model="form.id_produk"
                 type="text"
                 required
-                :class="errors.sku ? 'border-red-300' : 'border-gray-300'"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Contoh: PROD001"
+                maxlength="13"
+                pattern="[0-9]{13}"
+                :class="errors.id_produk ? 'border-red-300' : 'border-gray-300'"
+                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                placeholder="1234567890123"
               />
-              <p v-if="errors.sku" class="mt-1 text-sm text-red-600">
-                {{ errors.sku }}
+              <p class="mt-1 text-xs text-gray-500">
+                13 digit barcode EAN-13 (angka saja)
+              </p>
+              <p v-if="errors.id_produk" class="mt-1 text-sm text-red-600">
+                {{ errors.id_produk }}
               </p>
             </div>
 
-            <!-- Barcode -->
+            <!-- Nomor BPOM -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Barcode
+                Nomor BPOM
               </label>
               <input
-                v-model="form.barcode"
+                v-model="form.nomor_bpom"
                 type="text"
-                :class="errors.barcode ? 'border-red-300' : 'border-gray-300'"
+                :class="
+                  errors.nomor_bpom ? 'border-red-300' : 'border-gray-300'
+                "
                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Scan atau ketik barcode"
+                placeholder="Contoh: MD 224510107023"
               />
-              <p v-if="errors.barcode" class="mt-1 text-sm text-red-600">
-                {{ errors.barcode }}
+              <p v-if="errors.nomor_bpom" class="mt-1 text-sm text-red-600">
+                {{ errors.nomor_bpom }}
               </p>
             </div>
           </div>
@@ -356,26 +363,30 @@ const emit = defineEmits<{
 
 // Form state
 const form = reactive({
-  sku: "",
-  barcode: "",
+  id_produk: "",
+  nomor_bpom: "",
   nama: "",
-  deskripsi: "",
-  kategori_id: "",
+  kategori: "",
   harga: 0,
+  biaya_produk: 0,
   stok: 0,
-  stok_minimum: 5,
-  satuan: "",
-  berat: 0,
-  gambar_url: "",
-  aktif: true,
+  batas_stok: 5,
+  unit: "pcs",
+  pack_unit: "karton",
+  pack_size: 1,
+  harga_pack: 0,
+  qty_tier1: 0,
+  harga_tier1: 0,
+  harga_tier_qty: 0,
+  harga_tier_pack: 0,
+  gambar: "",
 });
 
 const errors = reactive({
-  sku: "",
-  barcode: "",
+  id_produk: "",
+  nomor_bpom: "",
   nama: "",
-  deskripsi: "",
-  kategori_id: "",
+  kategori: "",
   harga: "",
   stok: "",
   stok_minimum: "",
