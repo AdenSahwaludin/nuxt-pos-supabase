@@ -30,34 +30,39 @@
         <!-- Content -->
         <form @submit.prevent="handleSubmit" class="p-6 space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- SKU (Read-only) -->
+            <!-- ID Produk (Read-only) -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                SKU
+                ID Produk (Barcode)
               </label>
               <input
-                :value="produk.sku"
+                :value="produk.id_produk"
                 type="text"
                 readonly
-                class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-lg text-gray-600"
+                inputmode="numeric"
+                class="w-full px-3 py-2 border border-gray-300 bg-gray-50 rounded-lg text-gray-600 font-mono"
               />
-              <p class="mt-1 text-sm text-gray-500">SKU tidak dapat diubah</p>
+              <p class="mt-1 text-sm text-gray-500">
+                ID Produk tidak dapat diubah
+              </p>
             </div>
 
-            <!-- Barcode -->
+            <!-- BPOM -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Barcode
+                Nomor BPOM
               </label>
               <input
-                v-model="form.barcode"
+                v-model="form.nomor_bpom"
                 type="text"
-                :class="errors.barcode ? 'border-red-300' : 'border-gray-300'"
+                :class="
+                  errors.nomor_bpom ? 'border-red-300' : 'border-gray-300'
+                "
                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Scan atau ketik barcode"
+                placeholder="Nomor registrasi BPOM"
               />
-              <p v-if="errors.barcode" class="mt-1 text-sm text-red-600">
-                {{ errors.barcode }}
+              <p v-if="errors.nomor_bpom" class="mt-1 text-sm text-red-600">
+                {{ errors.nomor_bpom }}
               </p>
             </div>
           </div>
@@ -80,22 +85,7 @@
             </p>
           </div>
 
-          <!-- Deskripsi -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Deskripsi
-            </label>
-            <textarea
-              v-model="form.deskripsi"
-              rows="3"
-              :class="errors.deskripsi ? 'border-red-300' : 'border-gray-300'"
-              class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Deskripsi produk (opsional)"
-            ></textarea>
-            <p v-if="errors.deskripsi" class="mt-1 text-sm text-red-600">
-              {{ errors.deskripsi }}
-            </p>
-          </div>
+          <!-- Deskripsi - DIHAPUS karena tidak ada di database -->
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Kategori -->
@@ -104,10 +94,10 @@
                 Kategori <span class="text-red-500">*</span>
               </label>
               <select
-                v-model="form.kategori_id"
+                v-model="form.id_kategori"
                 required
                 :class="
-                  errors.kategori_id ? 'border-red-300' : 'border-gray-300'
+                  errors.id_kategori ? 'border-red-300' : 'border-gray-300'
                 "
                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
@@ -120,22 +110,22 @@
                   {{ kat.nama }}
                 </option>
               </select>
-              <p v-if="errors.kategori_id" class="mt-1 text-sm text-red-600">
-                {{ errors.kategori_id }}
+              <p v-if="errors.id_kategori" class="mt-1 text-sm text-red-600">
+                {{ errors.id_kategori }}
               </p>
             </div>
 
             <!-- Satuan -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Satuan
+                Unit
               </label>
               <select
-                v-model="form.satuan"
-                :class="errors.satuan ? 'border-red-300' : 'border-gray-300'"
+                v-model="form.unit"
+                :class="errors.unit ? 'border-red-300' : 'border-gray-300'"
                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
-                <option value="">Pilih Satuan</option>
+                <option value="">Pilih Unit</option>
                 <option value="pcs">Pieces (pcs)</option>
                 <option value="kg">Kilogram (kg)</option>
                 <option value="gram">Gram (g)</option>
@@ -147,17 +137,17 @@
                 <option value="pack">Pack</option>
                 <option value="lusin">Lusin</option>
               </select>
-              <p v-if="errors.satuan" class="mt-1 text-sm text-red-600">
-                {{ errors.satuan }}
+              <p v-if="errors.unit" class="mt-1 text-sm text-red-600">
+                {{ errors.unit }}
               </p>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Harga -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Harga <span class="text-red-500">*</span>
+                Harga Jual <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <span
@@ -180,6 +170,37 @@
               </p>
             </div>
 
+            <!-- Biaya Produk -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Biaya Produk
+              </label>
+              <div class="relative">
+                <span
+                  class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >Rp</span
+                >
+                <input
+                  v-model.number="form.biaya_produk"
+                  type="number"
+                  min="0"
+                  step="100"
+                  :class="
+                    errors.biaya_produk ? 'border-red-300' : 'border-gray-300'
+                  "
+                  class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="0"
+                />
+              </div>
+              <p v-if="errors.biaya_produk" class="mt-1 text-sm text-red-600">
+                {{ errors.biaya_produk }}
+              </p>
+              <p class="mt-1 text-sm text-gray-500">Harga beli/modal produk</p>
+            </div>
+          </div>
+
+          <!-- Stok & Batas Stok -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Stok -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -199,91 +220,347 @@
               </p>
             </div>
 
-            <!-- Stok Minimum -->
+            <!-- Batas Stok -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Stok Minimum
+                Batas Stok Minimum
               </label>
               <input
-                v-model.number="form.stok_minimum"
+                v-model.number="form.batas_stok"
                 type="number"
                 min="0"
                 :class="
-                  errors.stok_minimum ? 'border-red-300' : 'border-gray-300'
+                  errors.batas_stok ? 'border-red-300' : 'border-gray-300'
                 "
                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="5"
               />
-              <p v-if="errors.stok_minimum" class="mt-1 text-sm text-red-600">
-                {{ errors.stok_minimum }}
+              <p v-if="errors.batas_stok" class="mt-1 text-sm text-red-600">
+                {{ errors.batas_stok }}
               </p>
             </div>
           </div>
 
-          <!-- Berat -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Berat (gram)
-              </label>
-              <input
-                v-model.number="form.berat"
-                type="number"
-                min="0"
-                step="0.1"
-                :class="errors.berat ? 'border-red-300' : 'border-gray-300'"
-                class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="0"
-              />
-              <p v-if="errors.berat" class="mt-1 text-sm text-red-600">
-                {{ errors.berat }}
-              </p>
-            </div>
+          <!-- Pack Information -->
+          <div class="bg-gray-50 p-4 rounded-lg space-y-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">
+              Informasi Kemasan
+            </h4>
 
-            <!-- Status Aktif -->
-            <div
-              class="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-            >
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- Pack Unit -->
               <div>
-                <label class="text-sm font-medium text-gray-700"
-                  >Status Produk</label
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Unit Kemasan
+                </label>
+                <select
+                  v-model="form.pack_unit"
+                  :class="
+                    errors.pack_unit ? 'border-red-300' : 'border-gray-300'
+                  "
+                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                <p class="text-sm text-gray-500">
-                  Produk dapat dijual dan ditampilkan
+                  <option value="">Pilih Unit Kemasan</option>
+                  <option value="karton">Karton</option>
+                  <option value="dus">Dus</option>
+                  <option value="box">Box</option>
+                  <option value="pack">Pack</option>
+                  <option value="lusin">Lusin</option>
+                  <option value="gross">Gross</option>
+                  <option value="kodi">Kodi</option>
+                </select>
+                <p v-if="errors.pack_unit" class="mt-1 text-sm text-red-600">
+                  {{ errors.pack_unit }}
                 </p>
               </div>
-              <label class="relative inline-flex items-center cursor-pointer">
+
+              <!-- Pack Size -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Isi per Kemasan
+                </label>
                 <input
-                  v-model="form.aktif"
-                  type="checkbox"
-                  class="sr-only peer"
+                  v-model.number="form.pack_size"
+                  type="number"
+                  min="1"
+                  :class="
+                    errors.pack_size ? 'border-red-300' : 'border-gray-300'
+                  "
+                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="1"
                 />
-                <div
-                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"
-                ></div>
-              </label>
+                <p v-if="errors.pack_size" class="mt-1 text-sm text-red-600">
+                  {{ errors.pack_size }}
+                </p>
+                <p class="mt-1 text-sm text-gray-500">
+                  Jumlah unit per kemasan
+                </p>
+              </div>
+
+              <!-- Harga Pack -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harga per Kemasan
+                </label>
+                <div class="relative">
+                  <span
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    >Rp</span
+                  >
+                  <input
+                    v-model.number="form.harga_pack"
+                    type="number"
+                    min="0"
+                    step="100"
+                    :class="
+                      errors.harga_pack ? 'border-red-300' : 'border-gray-300'
+                    "
+                    class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="0"
+                  />
+                </div>
+                <p v-if="errors.harga_pack" class="mt-1 text-sm text-red-600">
+                  {{ errors.harga_pack }}
+                </p>
+              </div>
             </div>
           </div>
 
-          <!-- URL Gambar -->
+          <!-- Tier Pricing -->
+          <div class="bg-blue-50 p-4 rounded-lg space-y-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">
+              Harga Bertingkat (Tier Pricing)
+            </h4>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Qty Tier 1 -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Minimum Qty Tier 1
+                </label>
+                <input
+                  v-model.number="form.qty_tier1"
+                  type="number"
+                  min="0"
+                  :class="
+                    errors.qty_tier1 ? 'border-red-300' : 'border-gray-300'
+                  "
+                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="0"
+                />
+                <p v-if="errors.qty_tier1" class="mt-1 text-sm text-red-600">
+                  {{ errors.qty_tier1 }}
+                </p>
+                <p class="mt-1 text-sm text-gray-500">
+                  Minimum pembelian untuk harga tier 1
+                </p>
+              </div>
+
+              <!-- Harga Tier 1 -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harga Tier 1
+                </label>
+                <div class="relative">
+                  <span
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    >Rp</span
+                  >
+                  <input
+                    v-model.number="form.harga_tier1"
+                    type="number"
+                    min="0"
+                    step="100"
+                    :class="
+                      errors.harga_tier1 ? 'border-red-300' : 'border-gray-300'
+                    "
+                    class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="0"
+                  />
+                </div>
+                <p v-if="errors.harga_tier1" class="mt-1 text-sm text-red-600">
+                  {{ errors.harga_tier1 }}
+                </p>
+              </div>
+
+              <!-- Harga Tier Qty -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harga Tier per Qty
+                </label>
+                <div class="relative">
+                  <span
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    >Rp</span
+                  >
+                  <input
+                    v-model.number="form.harga_tier_qty"
+                    type="number"
+                    min="0"
+                    step="100"
+                    :class="
+                      errors.harga_tier_qty
+                        ? 'border-red-300'
+                        : 'border-gray-300'
+                    "
+                    class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="0"
+                  />
+                </div>
+                <p
+                  v-if="errors.harga_tier_qty"
+                  class="mt-1 text-sm text-red-600"
+                >
+                  {{ errors.harga_tier_qty }}
+                </p>
+              </div>
+
+              <!-- Harga Tier Pack -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harga Tier per Pack
+                </label>
+                <div class="relative">
+                  <span
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    >Rp</span
+                  >
+                  <input
+                    v-model.number="form.harga_tier_pack"
+                    type="number"
+                    min="0"
+                    step="100"
+                    :class="
+                      errors.harga_tier_pack
+                        ? 'border-red-300'
+                        : 'border-gray-300'
+                    "
+                    class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="0"
+                  />
+                </div>
+                <p
+                  v-if="errors.harga_tier_pack"
+                  class="mt-1 text-sm text-red-600"
+                >
+                  {{ errors.harga_tier_pack }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Gambar -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              URL Gambar
+              Gambar Produk
             </label>
-            <input
-              v-model="form.gambar_url"
-              type="url"
-              :class="errors.gambar_url ? 'border-red-300' : 'border-gray-300'"
-              class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="https://example.com/image.jpg"
-            />
-            <p v-if="errors.gambar_url" class="mt-1 text-sm text-red-600">
-              {{ errors.gambar_url }}
-            </p>
-            <p class="mt-1 text-sm text-gray-500">
-              URL gambar produk (opsional). Fitur upload gambar akan tersedia
-              segera.
-            </p>
+
+            <!-- File Upload Area -->
+            <div class="space-y-4">
+              <!-- Current Image Preview -->
+              <div v-if="form.gambar || imagePreview" class="relative">
+                <img
+                  :src="imagePreview || form.gambar"
+                  alt="Preview gambar produk"
+                  class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+                />
+                <button
+                  @click="removeImage"
+                  type="button"
+                  class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                >
+                  <X :size="16" />
+                </button>
+              </div>
+
+              <!-- Upload Area -->
+              <div
+                class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors"
+              >
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept="image/*"
+                  @change="handleImageUpload"
+                  class="hidden"
+                />
+
+                <div class="space-y-2">
+                  <div
+                    class="mx-auto w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-6 h-6 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      ></path>
+                    </svg>
+                  </div>
+
+                  <div>
+                    <button
+                      @click="$refs.fileInput.click()"
+                      type="button"
+                      class="text-emerald-600 hover:text-emerald-700 font-medium"
+                    >
+                      Klik untuk upload
+                    </button>
+                    <span class="text-gray-500"> atau drag & drop</span>
+                  </div>
+
+                  <p class="text-xs text-gray-500">PNG, JPG, JPEG hingga 5MB</p>
+                </div>
+
+                <!-- Upload Progress -->
+                <div
+                  v-if="uploadProgress > 0 && uploadProgress < 100"
+                  class="mt-4"
+                >
+                  <div class="bg-gray-200 rounded-full h-2">
+                    <div
+                      class="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                      :style="{ width: uploadProgress + '%' }"
+                    ></div>
+                  </div>
+                  <p class="text-sm text-gray-600 mt-1">
+                    Uploading... {{ uploadProgress }}%
+                  </p>
+                </div>
+              </div>
+
+              <!-- URL Input Alternative -->
+              <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full border-t border-gray-300"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                  <span class="px-2 bg-white text-gray-500">atau</span>
+                </div>
+              </div>
+
+              <div>
+                <input
+                  v-model="form.gambar"
+                  type="url"
+                  :class="errors.gambar ? 'border-red-300' : 'border-gray-300'"
+                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p v-if="errors.gambar" class="mt-1 text-sm text-red-600">
+                  {{ errors.gambar }}
+                </p>
+                <p class="mt-1 text-sm text-gray-500">
+                  Masukkan URL gambar secara manual
+                </p>
+              </div>
+            </div>
           </div>
 
           <!-- Changes Summary -->
@@ -340,23 +617,29 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import { X, Edit } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
+import { useToast } from "~~/composables/useToast";
 
 interface Props {
   produk: {
     id: string;
-    sku: string;
-    barcode?: string;
+    id_produk: string;
     nama: string;
-    deskripsi?: string;
-    kategori_id: string;
+    gambar?: string;
+    nomor_bpom?: string;
+    id_kategori: number;
     kategori_nama?: string;
     harga: number;
+    biaya_produk?: number;
     stok: number;
-    stok_minimum?: number;
-    satuan?: string;
-    berat?: number;
-    gambar_url?: string;
-    aktif: boolean;
+    batas_stok?: number;
+    unit?: string;
+    pack_unit?: string;
+    pack_size?: number;
+    harga_pack?: number;
+    qty_tier1?: number;
+    harga_tier1?: number;
+    harga_tier_qty?: number;
+    harga_tier_pack?: number;
     created_at: string;
     updated_at: string;
   };
@@ -365,19 +648,24 @@ interface Props {
 
 interface Produk {
   id: string;
-  sku: string;
-  barcode?: string;
+  id_produk: string;
   nama: string;
-  deskripsi?: string;
-  kategori_id: string;
+  gambar?: string;
+  nomor_bpom?: string;
+  id_kategori: number;
   kategori_nama?: string;
   harga: number;
+  biaya_produk?: number;
   stok: number;
-  stok_minimum?: number;
-  satuan?: string;
-  berat?: number;
-  gambar_url?: string;
-  aktif: boolean;
+  batas_stok?: number;
+  unit?: string;
+  pack_unit?: string;
+  pack_size?: number;
+  harga_pack?: number;
+  qty_tier1?: number;
+  harga_tier1?: number;
+  harga_tier_qty?: number;
+  harga_tier_pack?: number;
   created_at: string;
   updated_at: string;
 }
@@ -391,39 +679,55 @@ const emit = defineEmits<{
 
 // Form state
 const form = reactive({
-  barcode: props.produk.barcode || "",
+  id_produk: props.produk.id_produk || "",
   nama: props.produk.nama || "",
-  deskripsi: props.produk.deskripsi || "",
-  kategori_id: props.produk.kategori_id || "",
+  nomor_bpom: props.produk.nomor_bpom || "",
+  id_kategori: props.produk.id_kategori || 0,
   harga: props.produk.harga || 0,
+  biaya_produk: props.produk.biaya_produk || 0,
   stok: props.produk.stok || 0,
-  stok_minimum: props.produk.stok_minimum || 5,
-  satuan: props.produk.satuan || "",
-  berat: props.produk.berat || 0,
-  gambar_url: props.produk.gambar_url || "",
-  aktif: props.produk.aktif !== false,
+  batas_stok: props.produk.batas_stok || 5,
+  unit: props.produk.unit || "",
+  pack_unit: props.produk.pack_unit || "",
+  pack_size: props.produk.pack_size || 1,
+  harga_pack: props.produk.harga_pack || 0,
+  qty_tier1: props.produk.qty_tier1 || 0,
+  harga_tier1: props.produk.harga_tier1 || 0,
+  harga_tier_qty: props.produk.harga_tier_qty || 0,
+  harga_tier_pack: props.produk.harga_tier_pack || 0,
+  gambar: props.produk.gambar || "",
 });
 
 const errors = reactive({
-  barcode: "",
+  id_produk: "",
   nama: "",
-  deskripsi: "",
-  kategori_id: "",
+  nomor_bpom: "",
+  id_kategori: "",
   harga: "",
+  biaya_produk: "",
   stok: "",
-  stok_minimum: "",
-  satuan: "",
-  berat: "",
-  gambar_url: "",
+  batas_stok: "",
+  unit: "",
+  pack_unit: "",
+  pack_size: "",
+  harga_pack: "",
+  qty_tier1: "",
+  harga_tier1: "",
+  harga_tier_qty: "",
+  harga_tier_pack: "",
+  gambar: "",
 });
 
 const isSubmitting = ref(false);
+const imagePreview = ref("");
+const uploadProgress = ref(0);
+const fileInput = ref(null);
 
 // Computed properties
 const isFormValid = computed(() => {
   return (
     form.nama.trim() !== "" &&
-    form.kategori_id !== "" &&
+    form.id_kategori !== 0 &&
     form.harga >= 0 &&
     form.stok >= 0 &&
     !Object.values(errors).some((error) => error !== "")
@@ -432,46 +736,45 @@ const isFormValid = computed(() => {
 
 const hasChanges = computed(() => {
   return (
-    form.barcode !== (props.produk.barcode || "") ||
+    form.id_produk !== (props.produk.id_produk || "") ||
     form.nama !== props.produk.nama ||
-    form.deskripsi !== (props.produk.deskripsi || "") ||
-    form.kategori_id !== props.produk.kategori_id ||
+    form.nomor_bpom !== (props.produk.nomor_bpom || "") ||
+    form.id_kategori !== props.produk.id_kategori ||
     form.harga !== props.produk.harga ||
+    form.biaya_produk !== (props.produk.biaya_produk || 0) ||
     form.stok !== props.produk.stok ||
-    form.stok_minimum !== (props.produk.stok_minimum || 5) ||
-    form.satuan !== (props.produk.satuan || "") ||
-    form.berat !== (props.produk.berat || 0) ||
-    form.gambar_url !== (props.produk.gambar_url || "") ||
-    form.aktif !== (props.produk.aktif !== false)
+    form.batas_stok !== (props.produk.batas_stok || 5) ||
+    form.unit !== (props.produk.unit || "") ||
+    form.pack_unit !== (props.produk.pack_unit || "") ||
+    form.pack_size !== (props.produk.pack_size || 1) ||
+    form.harga_pack !== (props.produk.harga_pack || 0) ||
+    form.qty_tier1 !== (props.produk.qty_tier1 || 0) ||
+    form.harga_tier1 !== (props.produk.harga_tier1 || 0) ||
+    form.harga_tier_qty !== (props.produk.harga_tier_qty || 0) ||
+    form.harga_tier_pack !== (props.produk.harga_tier_pack || 0) ||
+    form.gambar !== (props.produk.gambar || "")
   );
 });
 
 const changesList = computed(() => {
   const changes = [];
 
-  if (form.barcode !== (props.produk.barcode || "")) {
-    changes.push(
-      `Barcode: "${props.produk.barcode || "Kosong"}" → "${
-        form.barcode || "Kosong"
-      }"`
-    );
-  }
   if (form.nama !== props.produk.nama) {
     changes.push(`Nama: "${props.produk.nama}" → "${form.nama}"`);
   }
-  if (form.deskripsi !== (props.produk.deskripsi || "")) {
+  if (form.nomor_bpom !== (props.produk.nomor_bpom || "")) {
     changes.push(
-      `Deskripsi: "${props.produk.deskripsi || "Kosong"}" → "${
-        form.deskripsi || "Kosong"
+      `Nomor BPOM: "${props.produk.nomor_bpom || "Kosong"}" → "${
+        form.nomor_bpom || "Kosong"
       }"`
     );
   }
-  if (form.kategori_id !== props.produk.kategori_id) {
+  if (form.id_kategori !== props.produk.id_kategori) {
     const oldKat =
-      props.kategoriList.find((k) => k.id_kategori === props.produk.kategori_id)
+      props.kategoriList.find((k) => k.id_kategori === props.produk.id_kategori)
         ?.nama || "Tidak dikenal";
     const newKat =
-      props.kategoriList.find((k) => k.id_kategori === form.kategori_id)
+      props.kategoriList.find((k) => k.id_kategori === form.id_kategori)
         ?.nama || "Tidak dikenal";
     changes.push(`Kategori: "${oldKat}" → "${newKat}"`);
   }
@@ -482,36 +785,76 @@ const changesList = computed(() => {
       )} → Rp ${form.harga.toLocaleString("id-ID")}`
     );
   }
+  if (form.biaya_produk !== (props.produk.biaya_produk || 0)) {
+    changes.push(
+      `Biaya Produk: Rp ${(props.produk.biaya_produk || 0).toLocaleString(
+        "id-ID"
+      )} → Rp ${form.biaya_produk.toLocaleString("id-ID")}`
+    );
+  }
   if (form.stok !== props.produk.stok) {
     changes.push(`Stok: ${props.produk.stok} → ${form.stok}`);
   }
-  if (form.stok_minimum !== (props.produk.stok_minimum || 5)) {
+  if (form.batas_stok !== (props.produk.batas_stok || 5)) {
     changes.push(
-      `Stok Minimum: ${props.produk.stok_minimum || 5} → ${form.stok_minimum}`
+      `Batas Stok: ${props.produk.batas_stok || 5} → ${form.batas_stok}`
     );
   }
-  if (form.satuan !== (props.produk.satuan || "")) {
+  if (form.unit !== (props.produk.unit || "")) {
     changes.push(
-      `Satuan: "${props.produk.satuan || "Kosong"}" → "${
-        form.satuan || "Kosong"
+      `Unit: "${props.produk.unit || "Kosong"}" → "${form.unit || "Kosong"}"`
+    );
+  }
+  if (form.pack_unit !== (props.produk.pack_unit || "")) {
+    changes.push(
+      `Pack Unit: "${props.produk.pack_unit || "Kosong"}" → "${
+        form.pack_unit || "Kosong"
       }"`
     );
   }
-  if (form.berat !== (props.produk.berat || 0)) {
-    changes.push(`Berat: ${props.produk.berat || 0}g → ${form.berat}g`);
-  }
-  if (form.gambar_url !== (props.produk.gambar_url || "")) {
+  if (form.pack_size !== (props.produk.pack_size || 1)) {
     changes.push(
-      `URL Gambar: "${props.produk.gambar_url ? "Ada" : "Kosong"}" → "${
-        form.gambar_url ? "Ada" : "Kosong"
-      }"`
+      `Pack Size: ${props.produk.pack_size || 1} → ${form.pack_size}`
     );
   }
-  if (form.aktif !== (props.produk.aktif !== false)) {
+  if (form.harga_pack !== (props.produk.harga_pack || 0)) {
     changes.push(
-      `Status: ${props.produk.aktif !== false ? "Aktif" : "Nonaktif"} → ${
-        form.aktif ? "Aktif" : "Nonaktif"
-      }`
+      `Harga Pack: Rp ${(props.produk.harga_pack || 0).toLocaleString(
+        "id-ID"
+      )} → Rp ${form.harga_pack.toLocaleString("id-ID")}`
+    );
+  }
+  if (form.qty_tier1 !== (props.produk.qty_tier1 || 0)) {
+    changes.push(
+      `Qty Tier 1: ${props.produk.qty_tier1 || 0} → ${form.qty_tier1}`
+    );
+  }
+  if (form.harga_tier1 !== (props.produk.harga_tier1 || 0)) {
+    changes.push(
+      `Harga Tier 1: Rp ${(props.produk.harga_tier1 || 0).toLocaleString(
+        "id-ID"
+      )} → Rp ${form.harga_tier1.toLocaleString("id-ID")}`
+    );
+  }
+  if (form.harga_tier_qty !== (props.produk.harga_tier_qty || 0)) {
+    changes.push(
+      `Harga Tier Qty: Rp ${(props.produk.harga_tier_qty || 0).toLocaleString(
+        "id-ID"
+      )} → Rp ${form.harga_tier_qty.toLocaleString("id-ID")}`
+    );
+  }
+  if (form.harga_tier_pack !== (props.produk.harga_tier_pack || 0)) {
+    changes.push(
+      `Harga Tier Pack: Rp ${(props.produk.harga_tier_pack || 0).toLocaleString(
+        "id-ID"
+      )} → Rp ${form.harga_tier_pack.toLocaleString("id-ID")}`
+    );
+  }
+  if (form.gambar !== (props.produk.gambar || "")) {
+    changes.push(
+      `Gambar: "${props.produk.gambar ? "Ada" : "Kosong"}" → "${
+        form.gambar ? "Ada" : "Kosong"
+      }"`
     );
   }
 
@@ -534,8 +877,8 @@ const validateForm = () => {
   }
 
   // Validate kategori
-  if (!form.kategori_id) {
-    errors.kategori_id = "Kategori wajib dipilih";
+  if (!form.id_kategori) {
+    errors.id_kategori = "Kategori wajib dipilih";
     isValid = false;
   }
 
@@ -545,27 +888,63 @@ const validateForm = () => {
     isValid = false;
   }
 
+  // Validate biaya produk
+  if (form.biaya_produk < 0) {
+    errors.biaya_produk = "Biaya produk tidak boleh negatif";
+    isValid = false;
+  }
+
   // Validate stok
   if (form.stok < 0) {
     errors.stok = "Stok tidak boleh negatif";
     isValid = false;
   }
 
-  // Validate stok minimum
-  if (form.stok_minimum !== undefined && form.stok_minimum < 0) {
-    errors.stok_minimum = "Stok minimum tidak boleh negatif";
+  // Validate batas stok
+  if (form.batas_stok !== undefined && form.batas_stok < 0) {
+    errors.batas_stok = "Batas stok tidak boleh negatif";
     isValid = false;
   }
 
-  // Validate berat
-  if (form.berat !== undefined && form.berat < 0) {
-    errors.berat = "Berat tidak boleh negatif";
+  // Validate pack size
+  if (form.pack_size !== undefined && form.pack_size < 0) {
+    errors.pack_size = "Pack size tidak boleh negatif";
+    isValid = false;
+  }
+
+  // Validate harga pack
+  if (form.harga_pack < 0) {
+    errors.harga_pack = "Harga pack tidak boleh negatif";
+    isValid = false;
+  }
+
+  // Validate qty tier1
+  if (form.qty_tier1 < 0) {
+    errors.qty_tier1 = "Qty tier 1 tidak boleh negatif";
+    isValid = false;
+  }
+
+  // Validate harga tier1
+  if (form.harga_tier1 < 0) {
+    errors.harga_tier1 = "Harga tier 1 tidak boleh negatif";
+    isValid = false;
+  }
+
+  // Validate harga tier qty
+  if (form.harga_tier_qty < 0) {
+    errors.harga_tier_qty = "Harga tier qty tidak boleh negatif";
+    isValid = false;
+  }
+
+  // Validate harga tier pack
+  if (form.harga_tier_pack < 0) {
+    errors.harga_tier_pack = "Harga tier pack tidak boleh negatif";
     isValid = false;
   }
 
   // Validate URL gambar
-  if (form.gambar_url && !isValidUrl(form.gambar_url)) {
-    errors.gambar_url = "URL gambar tidak valid";
+  if (form.gambar && !isValidUrl(form.gambar)) {
+    errors.gambar = "URL gambar tidak valid";
     isValid = false;
   }
 
@@ -581,6 +960,90 @@ const isValidUrl = (string: string) => {
   }
 };
 
+// Image upload methods
+const handleImageUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (!file) return;
+
+  // Validate file type
+  if (!file.type.startsWith("image/")) {
+    const toast = useToast();
+    toast.error("File harus berupa gambar (PNG, JPG, JPEG)");
+    return;
+  }
+
+  // Validate file size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    const toast = useToast();
+    toast.error("Ukuran file maksimal 5MB");
+    return;
+  }
+
+  try {
+    uploadProgress.value = 10;
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+
+    uploadProgress.value = 30;
+
+    // Generate unique filename
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${props.produk.id_produk}_${Date.now()}.${fileExt}`;
+
+    uploadProgress.value = 50;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("produk-images")
+      .upload(fileName, file);
+
+    if (error) {
+      console.error("Upload error:", error);
+      throw error;
+    }
+
+    uploadProgress.value = 80;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("produk-images")
+      .getPublicUrl(fileName);
+
+    form.gambar = urlData.publicUrl;
+    uploadProgress.value = 100;
+
+    const toast = useToast();
+    toast.success("Gambar berhasil diupload");
+
+    // Reset progress after a delay
+    setTimeout(() => {
+      uploadProgress.value = 0;
+    }, 1000);
+  } catch (error: any) {
+    console.error("Error uploading image:", error);
+    uploadProgress.value = 0;
+    imagePreview.value = "";
+
+    const toast = useToast();
+    toast.error(error.message || "Gagal mengupload gambar");
+  }
+};
+
+const removeImage = () => {
+  form.gambar = "";
+  imagePreview.value = "";
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
+};
+
 const handleSubmit = async () => {
   if (!validateForm() || !hasChanges.value) {
     return;
@@ -589,21 +1052,26 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    console.log("🔄 Updating produk:", props.produk.sku, form);
+    console.log("🔄 Updating produk:", props.produk.id_produk, form);
 
     // Prepare data for update
     const updateData = {
-      barcode: form.barcode?.trim() || null,
       nama: form.nama.trim(),
-      deskripsi: form.deskripsi?.trim() || null,
-      kategori_id: form.kategori_id,
+      nomor_bpom: form.nomor_bpom?.trim() || null,
+      id_kategori: form.id_kategori,
       harga: form.harga,
+      biaya_produk: form.biaya_produk || 0,
       stok: form.stok,
-      stok_minimum: form.stok_minimum || 5,
-      satuan: form.satuan || null,
-      berat: form.berat || null,
-      gambar_url: form.gambar_url?.trim() || null,
-      aktif: form.aktif,
+      batas_stok: form.batas_stok || 5,
+      unit: form.unit || "pcs",
+      pack_unit: form.pack_unit?.trim() || null,
+      pack_size: form.pack_size || 1,
+      harga_pack: form.harga_pack || null,
+      qty_tier1: form.qty_tier1 || null,
+      harga_tier1: form.harga_tier1 || null,
+      harga_tier_qty: form.harga_tier_qty || null,
+      harga_tier_pack: form.harga_tier_pack || null,
+      gambar: form.gambar?.trim() || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -612,11 +1080,11 @@ const handleSubmit = async () => {
       .schema("sbs")
       .from("produk")
       .update(updateData)
-      .eq("sku", props.produk.sku)
+      .eq("id_produk", props.produk.id_produk)
       .select(
         `
         *,
-        kategori:kategori_id (
+        kategori:id_kategori (
           id_kategori,
           nama
         )
@@ -633,20 +1101,25 @@ const handleSubmit = async () => {
 
     // Transform data to match interface
     const updatedProduk: Produk = {
-      id: data.sku,
-      sku: data.sku,
-      barcode: data.barcode,
+      id: data.id_produk,
+      id_produk: data.id_produk,
       nama: data.nama,
-      deskripsi: data.deskripsi,
-      kategori_id: data.kategori_id,
+      gambar: data.gambar,
+      nomor_bpom: data.nomor_bpom,
+      id_kategori: data.id_kategori,
       kategori_nama: data.kategori?.nama || "Tanpa Kategori",
       harga: data.harga,
+      biaya_produk: data.biaya_produk,
       stok: data.stok,
-      stok_minimum: data.stok_minimum,
-      satuan: data.satuan,
-      berat: data.berat,
-      gambar_url: data.gambar_url,
-      aktif: data.aktif,
+      batas_stok: data.batas_stok,
+      unit: data.unit,
+      pack_unit: data.pack_unit,
+      pack_size: data.pack_size,
+      harga_pack: data.harga_pack,
+      qty_tier1: data.qty_tier1,
+      harga_tier1: data.harga_tier1,
+      harga_tier_qty: data.harga_tier_qty,
+      harga_tier_pack: data.harga_tier_pack,
       created_at: data.created_at,
       updated_at: data.updated_at,
     };

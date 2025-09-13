@@ -383,13 +383,13 @@
               v-for="produk in produkList.filter((p) => p && p.id)"
               :key="produk?.id || Math.random()"
               class="hover:bg-gray-50"
-              :class="{ 'bg-blue-50': selectedProduk.includes(produk.id) }"
+              :class="{ 'bg-blue-50': selectedProdukIds.includes(produk.id) }"
             >
               <!-- Checkbox -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <input
                   type="checkbox"
-                  :checked="selectedProduk.includes(produk.id)"
+                  :checked="selectedProdukIds.includes(produk.id)"
                   @change="toggleSelect(produk.id)"
                   class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                 />
@@ -606,61 +606,138 @@
       @cancel="cancelDeleteProduk"
     />
 
-    <!-- Stock Adjustment Modal -->
-    <div v-if="showStockModal" class="fixed inset-0 z-50 overflow-y-auto">
+    <!-- Import Modal -->
+    <div v-if="showImportModal" class="fixed inset-0 z-50 overflow-y-auto">
       <div
-        class="fixed inset-0 bg-black bg-opacity-50"
-        @click="showStockModal = false"
+        class="fixed inset-0 modal-backdrop transition-opacity"
+        @click="showImportModal = false"
       ></div>
       <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full">
+          <!-- Header -->
           <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">Adjust Stok</h3>
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <Upload :size="24" class="text-blue-500 mr-3" />
+                Import Produk dari CSV
+              </h3>
+              <button
+                @click="showImportModal = false"
+                class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X :size="20" class="text-gray-500" />
+              </button>
+            </div>
           </div>
+
+          <!-- Content -->
           <div class="p-6">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Produk: {{ stockAdjustment.produk?.nama }}
-              </label>
-              <p class="text-sm text-gray-500">
-                Stok saat ini: {{ stockAdjustment.produk?.stok || 0 }}
-              </p>
+            <!-- Instructions -->
+            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 class="font-medium text-blue-900 mb-2">Panduan Import:</h4>
+              <ul class="text-sm text-blue-800 space-y-1">
+                <li>• File harus berformat CSV dengan header yang sesuai</li>
+                <li>• Barcode harus 13 digit angka (EAN-13)</li>
+                <li>• Kategori ID harus sudah ada di sistem</li>
+                <li>• Unduh template untuk format yang benar</li>
+              </ul>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Stok Baru
-              </label>
-              <input
-                v-model.number="stockAdjustment.newStock"
-                type="number"
-                min="0"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              />
+
+            <!-- Template Download -->
+            <div class="mb-6">
+              <button
+                @click="downloadTemplate"
+                class="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download :size="16" />
+                <span>Unduh Template CSV</span>
+              </button>
             </div>
+
+            <!-- File Upload -->
             <div class="mb-6">
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Catatan (Opsional)
+                Pilih File CSV
               </label>
-              <textarea
-                v-model="stockAdjustment.notes"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Alasan perubahan stok..."
-              ></textarea>
+              <input
+                type="file"
+                accept=".csv"
+                @change="handleFileUpload"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-lg"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                Maksimal ukuran file: 5MB
+              </p>
             </div>
+
+            <!-- Import Results -->
+            <div v-if="importResults.total > 0" class="mb-6">
+              <h4 class="font-medium text-gray-900 mb-3">Hasil Import:</h4>
+              <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                  <div class="text-2xl font-bold text-gray-900">
+                    {{ importResults.total }}
+                  </div>
+                  <div class="text-sm text-gray-600">Total</div>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded-lg">
+                  <div class="text-2xl font-bold text-green-600">
+                    {{ importResults.success }}
+                  </div>
+                  <div class="text-sm text-green-600">Berhasil</div>
+                </div>
+                <div class="text-center p-3 bg-red-50 rounded-lg">
+                  <div class="text-2xl font-bold text-red-600">
+                    {{ importResults.failed }}
+                  </div>
+                  <div class="text-sm text-red-600">Gagal</div>
+                </div>
+              </div>
+
+              <!-- Error Details -->
+              <div
+                v-if="importResults.errors.length > 0"
+                class="max-h-32 overflow-y-auto"
+              >
+                <h5 class="font-medium text-red-900 mb-2">Error Details:</h5>
+                <div class="space-y-1">
+                  <div
+                    v-for="(error, index) in importResults.errors"
+                    :key="index"
+                    class="text-sm text-red-700 bg-red-50 p-2 rounded"
+                  >
+                    {{ error }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div
+            class="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl"
+          >
             <div class="flex justify-end space-x-3">
               <button
-                @click="showStockModal = false"
+                @click="showImportModal = false"
                 class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
+                :disabled="isImporting"
               >
-                Batal
+                Tutup
               </button>
               <button
-                @click="updateStock"
-                :disabled="stockAdjustment.newStock < 0"
-                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="importFromCSV"
+                :disabled="!importFile || isImporting"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                Update Stok
+                <span
+                  v-if="isImporting"
+                  class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                ></span>
+                <Upload v-else :size="16" />
+                <span>{{
+                  isImporting ? "Mengimport..." : "Import Sekarang"
+                }}</span>
               </button>
             </div>
           </div>
@@ -668,8 +745,69 @@
       </div>
     </div>
   </div>
-</template>
 
+  <!-- Stock Adjustment Modal -->
+  <div v-if="showStockModal" class="fixed inset-0 z-50 overflow-y-auto">
+    <div
+      class="fixed inset-0 modal-backdrop transition-opacity"
+      @click="showStockModal = false"
+    ></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Adjust Stok</h3>
+        </div>
+        <div class="p-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Produk: {{ stockAdjustment.produk?.nama }}
+            </label>
+            <p class="text-sm text-gray-500">
+              Stok saat ini: {{ stockAdjustment.produk?.stok || 0 }}
+            </p>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Stok Baru
+            </label>
+            <input
+              v-model.number="stockAdjustment.newStock"
+              type="number"
+              min="0"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Catatan (Opsional)
+            </label>
+            <textarea
+              v-model="stockAdjustment.notes"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Alasan perubahan stok..."
+            ></textarea>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              @click="showStockModal = false"
+              class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              @click="updateStock"
+              :disabled="stockAdjustment.newStock < 0"
+              class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Update Stok
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, reactive, computed, onMounted, watch } from "vue";
@@ -692,7 +830,9 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-vue-next";
+import { useToast } from "~~/composables/useToast";
 
 // Page meta
 definePageMeta({
@@ -1091,14 +1231,24 @@ const handleProdukCreated = (newProduk: Produk) => {
 };
 
 const handleProdukUpdated = (updatedProduk: Produk) => {
-  const index = allProduk.value.findIndex((p) => p.id === updatedProduk.id);
+  // Find by id_produk since that's the consistent identifier
+  const index = allProduk.value.findIndex(
+    (p) => p.id_produk === updatedProduk.id_produk
+  );
   if (index !== -1) {
     allProduk.value[index] = updatedProduk;
+    console.log("✅ Produk updated in list:", updatedProduk.id_produk);
+  } else {
+    console.warn(
+      "⚠️ Produk not found in list for update:",
+      updatedProduk.id_produk
+    );
+    // Refresh the entire list if specific update fails
+    loadProduk();
   }
   showEditModal.value = false;
   const toast = useToast();
   toast.success(`Produk "${updatedProduk.nama}" berhasil diperbarui`);
-  loadProduk();
 };
 
 // Utility functions
@@ -1255,15 +1405,399 @@ const updateStock = async () => {
   }
 };
 
+// Import/Export state
+const importFile = ref<File | null>(null);
+const isImporting = ref(false);
+const importResults = ref({
+  total: 0,
+  success: 0,
+  failed: 0,
+  errors: [] as string[],
+});
+
 // Export/Import functions
 const exportProduk = () => {
-  const toast = useToast();
-  toast.info("Fitur export akan segera tersedia");
+  try {
+    const csvHeaders = [
+      "id_produk",
+      "nama",
+      "nomor_bpom",
+      "kategori_id",
+      "harga",
+      "stok",
+      "batas_stok",
+      "unit",
+      "gambar",
+    ];
+
+    let csvContent = csvHeaders.join(",") + "\n";
+
+    // Add all products to CSV
+    allProduk.value.forEach((produk) => {
+      const row = [
+        `"${produk.id_produk || ""}"`,
+        `"${produk.nama || ""}"`,
+        `"${produk.nomor_bpom || ""}"`,
+        produk.kategori_id || "",
+        produk.harga || 0,
+        produk.stok || 0,
+        produk.batas_stok || 5,
+        `"${produk.unit || "pcs"}"`,
+        `"${produk.gambar || ""}"`,
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `produk_export_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    const toast = useToast();
+    toast.success(`${allProduk.value.length} produk berhasil diekspor ke CSV`);
+  } catch (error) {
+    console.error("❌ Export error:", error);
+    const toast = useToast();
+    toast.error("Gagal mengekspor data produk");
+  }
 };
 
 const bulkExport = () => {
-  const toast = useToast();
-  toast.info("Fitur bulk export akan segera tersedia");
+  try {
+    const selectedProducts = allProduk.value.filter((p) =>
+      selectedProdukIds.value.includes(p.id)
+    );
+
+    if (selectedProducts.length === 0) {
+      const toast = useToast();
+      toast.warning("Pilih produk yang ingin diekspor");
+      return;
+    }
+
+    const csvHeaders = [
+      "id_produk",
+      "nama",
+      "nomor_bpom",
+      "kategori_id",
+      "harga",
+      "stok",
+      "batas_stok",
+      "unit",
+      "gambar",
+    ];
+
+    let csvContent = csvHeaders.join(",") + "\n";
+
+    selectedProducts.forEach((produk) => {
+      const row = [
+        `"${produk.id_produk || ""}"`,
+        `"${produk.nama || ""}"`,
+        `"${produk.nomor_bpom || ""}"`,
+        produk.kategori_id || "",
+        produk.harga || 0,
+        produk.stok || 0,
+        produk.batas_stok || 5,
+        `"${produk.unit || "pcs"}"`,
+        `"${produk.gambar || ""}"`,
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `produk_selected_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    const toast = useToast();
+    toast.success(
+      `${selectedProducts.length} produk terpilih berhasil diekspor ke CSV`
+    );
+  } catch (error) {
+    console.error("❌ Bulk export error:", error);
+    const toast = useToast();
+    toast.error("Gagal mengekspor produk terpilih");
+  }
+};
+
+const downloadTemplate = () => {
+  try {
+    const csvHeaders = [
+      "id_produk",
+      "nama",
+      "nomor_bpom",
+      "kategori_id",
+      "harga",
+      "stok",
+      "batas_stok",
+      "unit",
+      "gambar",
+    ];
+
+    // Add sample data
+    const sampleData = [
+      [
+        '"1234567890123"',
+        '"Contoh Produk 1"',
+        '"MD 224510107023"',
+        "1",
+        "15000",
+        "100",
+        "10",
+        '"pcs"',
+        '""',
+      ],
+      [
+        '"1234567890124"',
+        '"Contoh Produk 2"',
+        '"MD 224510107024"',
+        "2",
+        "25000",
+        "50",
+        "5",
+        '"box"',
+        '""',
+      ],
+    ];
+
+    let csvContent = csvHeaders.join(",") + "\n";
+    sampleData.forEach((row) => {
+      csvContent += row.join(",") + "\n";
+    });
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_import_produk.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    const toast = useToast();
+    toast.success("Template import CSV berhasil diunduh");
+  } catch (error) {
+    console.error("❌ Template download error:", error);
+    const toast = useToast();
+    toast.error("Gagal mengunduh template");
+  }
+};
+
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (file) {
+    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+      const toast = useToast();
+      toast.error("Hanya file CSV yang diperbolehkan");
+      return;
+    }
+    importFile.value = file;
+  }
+};
+
+const parseCSV = (text: string): string[][] => {
+  const result: string[][] = [];
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    if (line.trim() === "") continue;
+
+    const row: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === "," && !inQuotes) {
+        row.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    row.push(current.trim());
+    result.push(row);
+  }
+
+  return result;
+};
+
+const importFromCSV = async () => {
+  if (!importFile.value) {
+    const toast = useToast();
+    toast.error("Pilih file CSV untuk diimport");
+    return;
+  }
+
+  isImporting.value = true;
+  importResults.value = { total: 0, success: 0, failed: 0, errors: [] };
+
+  try {
+    const text = await importFile.value.text();
+    const rows = parseCSV(text);
+
+    if (rows.length < 2) {
+      throw new Error("File CSV harus memiliki header dan minimal 1 data");
+    }
+
+    const headers = rows[0].map((h) => h.replace(/"/g, "").toLowerCase());
+    const dataRows = rows.slice(1);
+
+    importResults.value.total = dataRows.length;
+
+    // Validate headers
+    const requiredHeaders = [
+      "id_produk",
+      "nama",
+      "kategori_id",
+      "harga",
+      "stok",
+    ];
+    const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
+
+    if (missingHeaders.length > 0) {
+      throw new Error(
+        `Header yang diperlukan tidak ditemukan: ${missingHeaders.join(", ")}`
+      );
+    }
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+
+      try {
+        // Map CSV row to product object
+        const produkData: any = {};
+
+        headers.forEach((header, index) => {
+          let value = row[index]?.replace(/"/g, "") || "";
+
+          switch (header) {
+            case "id_produk":
+              produkData.id_produk = value.trim();
+              break;
+            case "nama":
+              produkData.nama = value.trim();
+              break;
+            case "nomor_bpom":
+              produkData.nomor_bpom = value.trim() || null;
+              break;
+            case "kategori_id":
+              produkData.id_kategori = parseInt(value) || null;
+              break;
+            case "harga":
+              produkData.harga = parseFloat(value) || 0;
+              break;
+            case "stok":
+              produkData.stok = parseInt(value) || 0;
+              break;
+            case "batas_stok":
+              produkData.batas_stok = parseInt(value) || 5;
+              break;
+            case "unit":
+              produkData.unit = value.trim() || "pcs";
+              break;
+            case "gambar":
+              produkData.gambar = value.trim() || null;
+              break;
+          }
+        });
+
+        // Validate required fields
+        if (
+          !produkData.id_produk ||
+          !produkData.nama ||
+          !produkData.id_kategori
+        ) {
+          throw new Error(
+            `Baris ${
+              i + 2
+            }: Field wajib tidak lengkap (id_produk, nama, kategori_id)`
+          );
+        }
+
+        // Validate barcode format (EAN-13)
+        if (!/^\d{13}$/.test(produkData.id_produk)) {
+          throw new Error(`Baris ${i + 2}: Barcode harus 13 digit angka`);
+        }
+
+        // Check if product already exists
+        const { data: existingProduk, error: checkError } = await supabase
+          .schema("sbs")
+          .from("produk")
+          .select("id_produk")
+          .eq("id_produk", produkData.id_produk)
+          .maybeSingle();
+
+        if (checkError) {
+          throw new Error(
+            `Baris ${i + 2}: Gagal memeriksa duplikasi - ${checkError.message}`
+          );
+        }
+
+        if (existingProduk) {
+          throw new Error(
+            `Baris ${i + 2}: Barcode ${produkData.id_produk} sudah ada`
+          );
+        }
+
+        // Insert product
+        const { error: insertError } = await supabase
+          .schema("sbs")
+          .from("produk")
+          .insert([produkData]);
+
+        if (insertError) {
+          throw new Error(`Baris ${i + 2}: ${insertError.message}`);
+        }
+
+        importResults.value.success++;
+      } catch (error: any) {
+        importResults.value.failed++;
+        importResults.value.errors.push(error.message);
+      }
+    }
+
+    const toast = useToast();
+    if (importResults.value.success > 0) {
+      toast.success(`${importResults.value.success} produk berhasil diimport`);
+      loadProduk(); // Reload data
+    }
+
+    if (importResults.value.failed > 0) {
+      toast.warning(`${importResults.value.failed} produk gagal diimport`);
+    }
+  } catch (error: any) {
+    console.error("❌ Import error:", error);
+    const toast = useToast();
+    toast.error(error.message || "Gagal mengimport file CSV");
+  } finally {
+    isImporting.value = false;
+  }
 };
 
 const bulkDelete = () => {
