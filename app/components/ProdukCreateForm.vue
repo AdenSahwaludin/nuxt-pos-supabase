@@ -206,8 +206,9 @@
             class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           >
             <option value="">Pilih Pack Unit</option>
-            <option value="pack">Pack</option>
-            <option value="box">Box</option>
+             <option value="pack">Pack</option>
+             <option value="box">Box</option>
+             <option value="karton">Karton</option>
           </select>
           <p v-if="errors.pack_unit" class="mt-1 text-sm text-red-600">
             {{ errors.pack_unit }}
