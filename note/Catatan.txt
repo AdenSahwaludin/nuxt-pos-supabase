@@ -1,0 +1,18 @@
+Gunakan "~~/lib/supabaseClient" jangan "~/lib/supabaseClient"
+
+Informasi Pack
+Tentukan Pack Unit yaitu satuan besar seperti pcs, box, atau karton.
+Isi Pack Size dengan jumlah unit kecil yang terdapat di dalam satu pack.
+Jika ada harga khusus untuk pembelian per pack, masukkan pada Harga Pack. Jika kosong, gunakan perhitungan otomatis dari harga per unit × jumlah unit dalam pack.
+Tier Pricing
+Isi Qty Tier 1 dengan jumlah minimal pembelian untuk mendapatkan harga diskon.
+Masukkan Harga Tier 1 yaitu harga per unit jika pembelian sudah mencapai jumlah minimal tersebut.
+Jika ada level diskon tambahan, gunakan Harga Tier Qty dan Harga Tier Pack dengan logika yang sama.
+Pastikan harga tier selalu lebih murah dibanding harga normal.
+Aturan Umum
+Pack digunakan untuk memberi harga grosir dalam bentuk kemasan besar.
+Tier Pricing digunakan untuk memberi harga diskon berdasarkan jumlah pembelian dalam unit atau pack.
+Jika nilai tidak berlaku, biarkan kosong atau nol.
+
+Yang belum:
+ - Gambar di produk

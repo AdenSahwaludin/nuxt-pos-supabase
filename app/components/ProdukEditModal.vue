@@ -324,7 +324,7 @@
               <!-- Qty Tier 1 -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Minimum Qty Tier 1
+                  Minimal Beli (Unit)
                 </label>
                 <input
                   v-model.number="form.qty_tier1"
@@ -347,7 +347,7 @@
               <!-- Harga Tier 1 -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Harga Tier 1
+                  Harga per Unit (Diskon)
                 </label>
                 <div class="relative">
                   <span
@@ -374,7 +374,7 @@
               <!-- Harga Tier Qty -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Harga Tier per Qty
+                  Minimal Beli (Pack)
                 </label>
                 <div class="relative">
                   <span
@@ -406,7 +406,7 @@
               <!-- Harga Tier Pack -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Harga Tier per Pack
+                  Harga per Pack (Diskon)
                 </label>
                 <div class="relative">
                   <span

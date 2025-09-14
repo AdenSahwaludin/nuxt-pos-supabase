@@ -1,3 +1,0 @@
-Gunakan "~~/lib/supabaseClient" jangan "~/lib/supabaseClient"
-
-Gambar di produk

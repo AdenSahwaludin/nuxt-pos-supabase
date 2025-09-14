@@ -192,13 +192,13 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label class="block text-sm text-gray-600 mb-1"
-                    >Qty Tier 1</label
+                    >Minimal Beli (Unit)</label
                   >
                   <p class="text-sm">{{ produk.qty_tier1 ?? "-" }}</p>
                 </div>
                 <div>
                   <label class="block text-sm text-gray-600 mb-1"
-                    >Harga Tier 1</label
+                    >Harga per Unit (Diskon)</label
                   >
                   <p class="text-sm">
                     {{
@@ -210,7 +210,7 @@
                 </div>
                 <div>
                   <label class="block text-sm text-gray-600 mb-1"
-                    >Harga Tier Qty</label
+                    >Minimal Beli (Pack)</label
                   >
                   <p class="text-sm">
                     {{
@@ -222,7 +222,7 @@
                 </div>
                 <div>
                   <label class="block text-sm text-gray-600 mb-1"
-                    >Harga Tier Pack</label
+                    >Harga per Pack (Diskon)</label
                   >
                   <p class="text-sm">
                     {{
