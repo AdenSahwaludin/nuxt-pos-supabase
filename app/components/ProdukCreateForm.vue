@@ -389,14 +389,6 @@
 
 <script lang="ts">
 // @ts-nocheck
-import {
-  defineComponent,
-  ref,
-  reactive,
-  computed,
-  onMounted,
-  watch,
-} from "vue";
 import { supabase } from "~~/lib/supabaseClient";
 import { useToast } from "~~/composables/useToast";
 
