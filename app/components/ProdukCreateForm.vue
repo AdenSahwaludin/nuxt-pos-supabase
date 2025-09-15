@@ -421,10 +421,7 @@
           </div>
 
           <!-- Upload Progress -->
-          <div
-            v-if="uploadProgress > 0 && uploadProgress < 100"
-            class="mt-4"
-          >
+          <div v-if="uploadProgress > 0 && uploadProgress < 100" class="mt-4">
             <div class="bg-gray-200 rounded-full h-2">
               <div
                 class="bg-emerald-600 h-2 rounded-full transition-all duration-300"
@@ -656,7 +653,9 @@ export default defineComponent({
 
         // Generate unique filename using timestamp
         const fileExt = file.name.split(".").pop();
-        const fileName = `${form.id_produk || Date.now()}_${Date.now()}.${fileExt}`;
+        const fileName = `${
+          form.id_produk || Date.now()
+        }_${Date.now()}.${fileExt}`;
 
         uploadProgress.value = 50;
 
