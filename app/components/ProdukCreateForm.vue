@@ -351,21 +351,118 @@
       </div>
     </div>
 
+    <!-- Upload Gambar -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-2"
-        >URL Gambar Produk</label
-      >
-      <input
-        v-model="form.gambar"
-        type="url"
-        :class="errors.gambar ? 'border-red-300' : 'border-gray-300'"
-        class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-        placeholder="https://example.com/image.jpg"
-      />
-      <p v-if="errors.gambar" class="mt-1 text-sm text-red-600">
-        {{ errors.gambar }}
-      </p>
-      <p class="mt-1 text-sm text-gray-500">Opsional - URL gambar produk</p>
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        Gambar Produk
+      </label>
+
+      <!-- File Upload Area -->
+      <div class="space-y-4">
+        <!-- Current Image Preview -->
+        <div v-if="form.gambar || imagePreview" class="relative">
+          <img
+            :src="imagePreview || form.gambar"
+            alt="Preview gambar produk"
+            class="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+          />
+          <button
+            @click="removeImage"
+            type="button"
+            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Upload Area -->
+        <div
+          class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            @change="handleImageUpload"
+            class="hidden"
+          />
+
+          <div class="space-y-2">
+            <div
+              class="mx-auto w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center"
+            >
+              <svg
+                class="w-6 h-6 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+            </div>
+
+            <div>
+              <button
+                @click="$refs.fileInput.click()"
+                type="button"
+                class="text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                Klik untuk upload
+              </button>
+              <span class="text-gray-500"> atau drag & drop</span>
+            </div>
+
+            <p class="text-xs text-gray-500">PNG, JPG, JPEG hingga 5MB</p>
+          </div>
+
+          <!-- Upload Progress -->
+          <div
+            v-if="uploadProgress > 0 && uploadProgress < 100"
+            class="mt-4"
+          >
+            <div class="bg-gray-200 rounded-full h-2">
+              <div
+                class="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                :style="{ width: uploadProgress + '%' }"
+              ></div>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">
+              Uploading... {{ uploadProgress }}%
+            </p>
+          </div>
+        </div>
+
+        <!-- URL Input Alternative -->
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">atau</span>
+          </div>
+        </div>
+
+        <div>
+          <input
+            v-model="form.gambar"
+            type="url"
+            :class="errors.gambar ? 'border-red-300' : 'border-gray-300'"
+            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="https://example.com/image.jpg"
+          />
+          <p v-if="errors.gambar" class="mt-1 text-sm text-red-600">
+            {{ errors.gambar }}
+          </p>
+          <p class="mt-1 text-sm text-gray-500">
+            Masukkan URL gambar secara manual
+          </p>
+        </div>
+      </div>
     </div>
 
     <div class="flex justify-end space-x-3 pt-2">
@@ -391,6 +488,7 @@
 <script lang="ts">
 // @ts-nocheck
 import { supabase } from "~~/lib/supabaseClient";
+import { supabaseStorage } from "~~/lib/supabaseStorageClient";
 import { useToast } from "~~/composables/useToast";
 
 export default defineComponent({
@@ -403,6 +501,9 @@ export default defineComponent({
 
     const isSubmitting = ref(false);
     const kategoriList = ref<any[]>([]);
+    const imagePreview = ref("");
+    const uploadProgress = ref(0);
+    const fileInput = ref(null);
 
     const form = reactive({
       id_produk: "",
@@ -522,6 +623,84 @@ export default defineComponent({
       }
     }
 
+    // Image upload methods
+    const handleImageUpload = async (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      const file = target.files?.[0];
+
+      if (!file) return;
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("File harus berupa gambar (PNG, JPG, JPEG)");
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 5MB");
+        return;
+      }
+
+      try {
+        uploadProgress.value = 10;
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          imagePreview.value = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+
+        uploadProgress.value = 30;
+
+        // Generate unique filename using timestamp
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${form.id_produk || Date.now()}_${Date.now()}.${fileExt}`;
+
+        uploadProgress.value = 50;
+
+        // Upload to Supabase Storage using service role (temporary)
+        const { data, error } = await supabaseStorage.storage
+          .from("produk-images")
+          .upload(fileName, file);
+
+        if (error) {
+          throw new Error(`Upload gagal: ${error.message}`);
+        }
+
+        // Get public URL using regular client
+        const { data: publicData } = supabase.storage
+          .from("produk-images")
+          .getPublicUrl(fileName);
+
+        if (publicData?.publicUrl) {
+          form.gambar = publicData.publicUrl;
+          uploadProgress.value = 100;
+
+          toast.success("Gambar berhasil diupload");
+
+          // Reset progress after delay
+          setTimeout(() => {
+            uploadProgress.value = 0;
+          }, 1000);
+        }
+      } catch (error: any) {
+        console.error("Upload error:", error);
+        toast.error(error.message || "Gagal upload gambar");
+        uploadProgress.value = 0;
+        imagePreview.value = "";
+      }
+    };
+
+    const removeImage = () => {
+      form.gambar = "";
+      imagePreview.value = "";
+      if (fileInput.value) {
+        fileInput.value.value = "";
+      }
+    };
+
     async function handleSubmit() {
       if (!validateForm()) {
         toast.error("Mohon periksa kembali form");
@@ -640,7 +819,12 @@ export default defineComponent({
       form,
       errors,
       isFormValid,
+      imagePreview,
+      uploadProgress,
+      fileInput,
       handleSubmit,
+      handleImageUpload,
+      removeImage,
     };
   },
 });

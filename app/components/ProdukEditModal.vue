@@ -605,6 +605,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import { X, Edit } from "lucide-vue-next";
 import { supabase } from "~~/lib/supabaseClient";
+import { supabaseStorage } from "~~/lib/supabaseStorageClient";
 import { useToast } from "~~/composables/useToast";
 
 interface Props {
@@ -987,8 +988,8 @@ const handleImageUpload = async (event: Event) => {
 
     uploadProgress.value = 50;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    // Upload to Supabase Storage using service role (temporary)
+    const { data, error } = await supabaseStorage.storage
       .from("produk-images")
       .upload(fileName, file);
 
@@ -999,7 +1000,7 @@ const handleImageUpload = async (event: Event) => {
 
     uploadProgress.value = 80;
 
-    // Get public URL
+    // Get public URL using regular client
     const { data: urlData } = supabase.storage
       .from("produk-images")
       .getPublicUrl(fileName);
