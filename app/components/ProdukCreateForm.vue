@@ -369,7 +369,7 @@
           <button
             @click="removeImage"
             type="button"
-            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors w-8 h-8"
           >
             ✕
           </button>
@@ -377,7 +377,12 @@
 
         <!-- Upload Area -->
         <div
+          v-if="
+            (!form.gambar && !imagePreview) ||
+            (uploadProgress > 0 && uploadProgress < 100)
+          "
           class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors"
+          @click="uploadProgress === 0 ? $refs.fileInput.click() : null"
         >
           <input
             ref="fileInput"
@@ -387,7 +392,7 @@
             class="hidden"
           />
 
-          <div class="space-y-2">
+          <div class="space-y-2" v-if="uploadProgress === 0">
             <div
               class="mx-auto w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center"
             >
@@ -408,7 +413,6 @@
 
             <div>
               <button
-                @click="$refs.fileInput.click()"
                 type="button"
                 class="text-emerald-600 hover:text-emerald-700 font-medium"
               >
@@ -432,32 +436,6 @@
               Uploading... {{ uploadProgress }}%
             </p>
           </div>
-        </div>
-
-        <!-- URL Input Alternative -->
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-gray-300"></div>
-          </div>
-          <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-white text-gray-500">atau</span>
-          </div>
-        </div>
-
-        <div>
-          <input
-            v-model="form.gambar"
-            type="url"
-            :class="errors.gambar ? 'border-red-300' : 'border-gray-300'"
-            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            placeholder="https://example.com/image.jpg"
-          />
-          <p v-if="errors.gambar" class="mt-1 text-sm text-red-600">
-            {{ errors.gambar }}
-          </p>
-          <p class="mt-1 text-sm text-gray-500">
-            Masukkan URL gambar secara manual
-          </p>
         </div>
       </div>
     </div>

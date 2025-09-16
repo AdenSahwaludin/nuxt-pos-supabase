@@ -456,6 +456,7 @@
                   @click="removeImage"
                   type="button"
                   class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  :disabled="uploadProgress > 0 && uploadProgress < 100"
                 >
                   <X :size="16" />
                 </button>
@@ -463,7 +464,9 @@
 
               <!-- Upload Area -->
               <div
+                v-if="!form.gambar && !imagePreview"
                 class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors"
+                @click="$refs.fileInput.click()"
               >
                 <input
                   ref="fileInput"
@@ -487,14 +490,13 @@
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z"
                       ></path>
                     </svg>
                   </div>
 
                   <div>
                     <button
-                      @click="$refs.fileInput.click()"
                       type="button"
                       class="text-emerald-600 hover:text-emerald-700 font-medium"
                     >
@@ -505,47 +507,18 @@
 
                   <p class="text-xs text-gray-500">PNG, JPG, JPEG hingga 5MB</p>
                 </div>
-
-                <!-- Upload Progress -->
-                <div
-                  v-if="uploadProgress > 0 && uploadProgress < 100"
-                  class="mt-4"
-                >
-                  <div class="bg-gray-200 rounded-full h-2">
-                    <div
-                      class="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                      :style="{ width: uploadProgress + '%' }"
-                    ></div>
-                  </div>
-                  <p class="text-sm text-gray-600 mt-1">
-                    Uploading... {{ uploadProgress }}%
-                  </p>
-                </div>
               </div>
 
-              <!-- URL Input Alternative -->
-              <div class="relative">
-                <div class="absolute inset-0 flex items-center">
-                  <div class="w-full border-t border-gray-300"></div>
+              <!-- Upload Progress -->
+              <div v-if="uploadProgress > 0" class="mt-4">
+                <div class="bg-gray-200 rounded-full h-2">
+                  <div
+                    class="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                    :style="{ width: uploadProgress + '%' }"
+                  ></div>
                 </div>
-                <div class="relative flex justify-center text-sm">
-                  <span class="px-2 bg-white text-gray-500">atau</span>
-                </div>
-              </div>
-
-              <div>
-                <input
-                  v-model="form.gambar"
-                  type="url"
-                  :class="errors.gambar ? 'border-red-300' : 'border-gray-300'"
-                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="https://example.com/image.jpg"
-                />
-                <p v-if="errors.gambar" class="mt-1 text-sm text-red-600">
-                  {{ errors.gambar }}
-                </p>
-                <p class="mt-1 text-sm text-gray-500">
-                  Masukkan URL gambar secara manual
+                <p class="text-sm text-gray-600 mt-1">
+                  Uploading... {{ uploadProgress }}%
                 </p>
               </div>
             </div>
@@ -671,7 +644,7 @@ const form = reactive({
   id_produk: props.produk.id_produk || "",
   nama: props.produk.nama || "",
   nomor_bpom: props.produk.nomor_bpom || "",
-  id_kategori: props.produk.id_kategori || 0,
+  id_kategori: props.produk.kategori_id || props.produk.id_kategori || 0,
   harga: props.produk.harga || 0,
   biaya_produk: props.produk.biaya_produk || 0,
   stok: props.produk.stok || 0,
@@ -724,11 +697,13 @@ const isFormValid = computed(() => {
 });
 
 const hasChanges = computed(() => {
+  const originalKategoriId =
+    props.produk.kategori_id || props.produk.id_kategori || 0;
   return (
     form.id_produk !== (props.produk.id_produk || "") ||
     form.nama !== props.produk.nama ||
     form.nomor_bpom !== (props.produk.nomor_bpom || "") ||
-    form.id_kategori !== props.produk.id_kategori ||
+    form.id_kategori !== originalKategoriId ||
     form.harga !== props.produk.harga ||
     form.biaya_produk !== (props.produk.biaya_produk || 0) ||
     form.stok !== props.produk.stok ||
@@ -758,9 +733,14 @@ const changesList = computed(() => {
       }"`
     );
   }
-  if (form.id_kategori !== props.produk.id_kategori) {
+  if (
+    form.id_kategori !==
+    (props.produk.kategori_id || props.produk.id_kategori || 0)
+  ) {
+    const originalKategoriId =
+      props.produk.kategori_id || props.produk.id_kategori || 0;
     const oldKat =
-      props.kategoriList.find((k) => k.id_kategori === props.produk.id_kategori)
+      props.kategoriList.find((k) => k.id_kategori === originalKategoriId)
         ?.nama || "Tidak dikenal";
     const newKat =
       props.kategoriList.find((k) => k.id_kategori === form.id_kategori)
