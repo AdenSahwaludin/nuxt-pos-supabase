@@ -1,5 +1,5 @@
 <template>
-  <NuxtLayout :name="layoutName">
+  <NuxtLayout :name="layoutName" :key="$route.fullPath">
     <NuxtPage />
   </NuxtLayout>
 </template>
