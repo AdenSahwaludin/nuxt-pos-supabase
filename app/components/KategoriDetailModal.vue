@@ -315,7 +315,13 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-const formatDate = (dateString) => {};
+const formatDate = (dateString) => {
+  if (!dateString) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(dateString));
+};
 
 // Lifecycle
 onMounted(() => {

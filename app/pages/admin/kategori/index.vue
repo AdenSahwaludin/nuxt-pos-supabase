@@ -10,13 +10,23 @@
           Kelola kategori produk sistem Point of Sale
         </p>
       </div>
-      <button
-        @click="openCreateModal"
-        class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
-      >
-        <Plus :size="20" />
-        <span>Tambah Kategori</span>
-      </button>
+      <!-- Export Button -->
+      <div class="flex items-center space-x-4">
+        <button
+          @click="exportData"
+          class="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <Download :size="16" />
+          <span>Export</span>
+        </button>
+        <button
+          @click="openCreateModal"
+          class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+        >
+          <Plus :size="20" />
+          <span>Tambah Kategori</span>
+        </button>
+      </div>
     </div>
 
     <!-- Stats Cards -->
@@ -132,16 +142,30 @@
           </select>
         </div>
       </div>
+    </div>
 
-      <div class="flex items-center justify-between mt-6">
-        <div class="flex items-center space-x-4">
+    <!-- Data Table -->
+    <div
+      class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+    >
+      <!-- Table Header -->
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">Daftar Kategori</h2>
+          <div
+            v-if="selectedCategories.length === 0"
+            class="flex items-center space-x-4 text-sm text-gray-600"
+          >
+            <span>{{ filteredCategories.length }} kategori</span>
+          </div>
           <!-- Bulk Actions -->
           <div
             v-if="selectedCategories.length > 0"
             class="flex items-center space-x-2"
           >
             <span class="text-sm text-gray-600"
-              >{{ selectedCategories.length }} kategori dipilih</span
+              >{{ selectedCategories.length }} dari
+              {{ filteredCategories.length }} kategori dipilih</span
             >
             <button
               @click="clearSelection"
@@ -156,30 +180,6 @@
               <Trash2 :size="14" class="inline mr-1" />
               Hapus Terpilih
             </button>
-          </div>
-        </div>
-
-        <!-- Export Button -->
-        <button
-          @click="exportData"
-          class="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <Download :size="16" />
-          <span>Export</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Data Table -->
-    <div
-      class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-    >
-      <!-- Table Header -->
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900">Daftar Kategori</h2>
-          <div class="flex items-center space-x-4 text-sm text-gray-600">
-            <span>{{ filteredCategories.length }} kategori</span>
           </div>
         </div>
       </div>
