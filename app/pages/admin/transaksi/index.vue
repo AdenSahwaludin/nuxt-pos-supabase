@@ -492,19 +492,6 @@
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div
-      v-if="loading"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div class="bg-white rounded-lg p-6">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
-        ></div>
-        <p class="mt-2 text-gray-600">Loading...</p>
-      </div>
-    </div>
-
     <!-- Modal Detail -->
     <TransaksiDetailModal
       v-if="showDetailModal"
@@ -551,7 +538,6 @@ interface Transaksi {
 }
 
 // Reactive data
-const loading = ref(false);
 const transaksiList = ref<Transaksi[]>([]);
 const selectedTransaksi = ref<Transaksi | null>(null);
 const showDetailModal = ref(false);
@@ -597,7 +583,6 @@ const visiblePages = computed(() => {
 
 // Methods
 const fetchTransaksi = async () => {
-  loading.value = true;
   try {
     const supabase = useSupabase();
 
@@ -725,8 +710,6 @@ const fetchTransaksi = async () => {
     console.error("Error fetching transaksi:", error);
     const toast = useToast();
     toast.error("Gagal memuat data transaksi");
-  } finally {
-    loading.value = false;
   }
 };
 

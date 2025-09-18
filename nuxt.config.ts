@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import vue from "@vitejs/plugin-vue";
 export default defineNuxtConfig({
+  components: [{ path: "~/components", pathPrefix: false }],
   compatibilityDate: "2025-07-15",
   alias: {
     // Paksa "punycode" ke paket userland, bukan builtin Node

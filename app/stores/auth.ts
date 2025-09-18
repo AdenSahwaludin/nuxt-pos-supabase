@@ -6,6 +6,7 @@ export const useAuthStore = defineStore("auth", {
     user: null as any,
     profile: null as any,
     loading: false,
+    initialized: false,
   }),
 
   actions: {
@@ -112,6 +113,10 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async initAuth() {
+      if (this.initialized) {
+        return;
+      }
+
       this.loading = true;
       console.log("🔧 Initializing custom auth...");
 
@@ -161,6 +166,7 @@ export const useAuthStore = defineStore("auth", {
         await this.clearAuth();
       } finally {
         this.loading = false;
+        this.initialized = true;
         console.log(
           "🏁 Auth initialization complete. User:",
           !!this.user,
