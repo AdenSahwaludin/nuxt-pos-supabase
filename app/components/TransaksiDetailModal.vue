@@ -218,10 +218,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr
-                  v-for="item in transaksiItems"
-                  :key="item.id_detail"
-                >
+                <tr v-for="item in transaksiItems" :key="item.id_detail">
                   <td class="px-4 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">
                       {{ item.nama_produk }}
@@ -270,20 +267,14 @@
               }}</span>
             </div>
 
-            <div
-              v-if="transaksi.diskon > 0"
-              class="flex justify-between"
-            >
+            <div v-if="transaksi.diskon > 0" class="flex justify-between">
               <span class="text-sm text-gray-600">Diskon:</span>
               <span class="text-sm text-red-600"
                 >-{{ formatCurrency(transaksi.diskon) }}</span
               >
             </div>
 
-            <div
-              v-if="transaksi.pajak > 0"
-              class="flex justify-between"
-            >
+            <div v-if="transaksi.pajak > 0" class="flex justify-between">
               <span class="text-sm text-gray-600">Pajak:</span>
               <span class="text-sm text-gray-900">{{
                 formatCurrency(transaksi.pajak)

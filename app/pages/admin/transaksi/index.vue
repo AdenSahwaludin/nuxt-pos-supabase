@@ -601,9 +601,7 @@ const fetchTransaksi = async () => {
   try {
     const supabase = useSupabase();
 
-    let query = supabase
-      .from("sbs.transaksi")
-      .select("*", { count: "exact" });
+    let query = supabase.from("sbs.transaksi").select("*", { count: "exact" });
 
     // Apply filters
     if (filters.value.search) {
@@ -737,7 +735,9 @@ const fetchSummary = async () => {
     const supabase = useSupabase();
 
     // Get filtered summary
-    let query = supabase.from("sbs.transaksi").select("total, status_pembayaran");
+    let query = supabase
+      .from("sbs.transaksi")
+      .select("total, status_pembayaran");
 
     // Apply same filters as main query
     if (filters.value.status) {
