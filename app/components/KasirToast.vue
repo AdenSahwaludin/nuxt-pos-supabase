@@ -10,10 +10,12 @@
         >
           <!-- Progress Bar -->
           <div
-            v-if="toast.duration > 0"
+            v-if="toast.duration && toast.duration > 0"
             class="absolute top-0 left-0 h-1 transition-all duration-linear"
             :class="getProgressBarClass(toast.type)"
-            :style="{ width: `${(toast.timeLeft / toast.duration) * 100}%` }"
+            :style="{
+              width: `${((toast.timeLeft || 0) / toast.duration) * 100}%`,
+            }"
           ></div>
 
           <div class="p-4">
@@ -169,7 +171,9 @@ const addToast = (toast: Omit<Toast, "id">) => {
 
       const toastIndex = toasts.value.findIndex((t) => t.id === newToast.id);
       if (toastIndex !== -1) {
-        toasts.value[toastIndex].timeLeft = remaining;
+        if (toasts.value[toastIndex]) {
+          toasts.value[toastIndex].timeLeft = remaining;
+        }
       }
 
       if (remaining > 0) {
