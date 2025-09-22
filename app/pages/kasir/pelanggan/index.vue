@@ -1,5 +1,5 @@
 <template>
-  <div></div>
+  <div>
+    <!-- Page content coming soon -->
+  </div>
 </template>
-<script setup></script>
-<style></style>
