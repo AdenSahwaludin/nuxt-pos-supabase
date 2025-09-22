@@ -1,32 +1,13 @@
 <template>
-  <TransitionRoot appear :show="isOpen" as="template">
-    <Dialog as="div" @close="$emit('close')" class="relative z-50">
-      <TransitionChild
-        as="template"
-        enter="duration-300 ease-out"
-        enter-from="opacity-0"
-        enter-to="opacity-100"
-        leave="duration-200 ease-in"
-        leave-from="opacity-100"
-        leave-to="opacity-0"
-      >
-        <div class="fixed inset-0 bg-black bg-opacity-25" />
-      </TransitionChild>
+  <div class="fixed inset-0 z-50 overflow-y-auto">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 modal-backdrop" @click="$emit('close')"></div>
 
-      <div class="fixed inset-0 overflow-y-auto">
-        <div class="flex min-h-full items-center justify-center p-4">
-          <TransitionChild
-            as="template"
-            enter="duration-300 ease-out"
-            enter-from="opacity-0 scale-95"
-            enter-to="opacity-100 scale-100"
-            leave="duration-200 ease-in"
-            leave-from="opacity-100 scale-100"
-            leave-to="opacity-0 scale-95"
-          >
-            <DialogPanel
-              class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all"
-            >
+    <!-- Modal -->
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div
+        class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all"
+      >
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
@@ -37,7 +18,7 @@
               @click="$emit('close')"
               class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <XMarkIcon class="h-5 w-5 text-gray-500" />
+              <X :size="20" class="text-gray-500" />
             </button>
           </div>
         </div>
@@ -60,12 +41,12 @@
                 <span
                   class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                   :class="
-                    pelanggan.status === 'aktif'
+                    pelanggan.aktif
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-red-100 text-red-800'
                   "
                 >
-                  {{ pelanggan.status === 'aktif' ? "Aktif" : "Nonaktif" }}
+                  {{ pelanggan.aktif ? "Aktif" : "Nonaktif" }}
                 </span>
                 <span
                   v-if="pelanggan.allow_installment"
@@ -84,7 +65,7 @@
               <h5
                 class="text-sm font-semibold text-gray-900 mb-3 flex items-center"
               >
-                <UserIcon class="h-4 w-4 mr-2 text-gray-600" />
+                <User :size="16" class="mr-2 text-gray-600" />
                 Informasi Personal
               </h5>
               <div class="grid grid-cols-1 gap-3">
@@ -102,23 +83,23 @@
                   <span class="text-sm text-gray-600">Nomor HP</span>
                   <div class="flex items-center space-x-2">
                     <span class="text-sm font-medium text-gray-900">{{
-                      pelanggan.telepon || "-"
+                      pelanggan.no_hp || "-"
                     }}</span>
                     <button
-                      v-if="pelanggan.telepon"
-                      @click="copyToClipboard(pelanggan.telepon)"
+                      v-if="pelanggan.no_hp"
+                      @click="copyToClipboard(pelanggan.no_hp)"
                       class="p-1 hover:bg-gray-100 rounded"
                       title="Salin nomor HP"
                     >
-                      <DocumentDuplicateIcon class="h-3 w-3 text-gray-400" />
+                      <Copy :size="12" class="text-gray-400" />
                     </button>
                     <button
-                      v-if="pelanggan.telepon"
-                      @click="openWhatsApp(pelanggan.telepon)"
+                      v-if="pelanggan.no_hp"
+                      @click="openWhatsApp(pelanggan.no_hp)"
                       class="p-1 hover:bg-green-100 rounded"
                       title="Buka WhatsApp"
                     >
-                      <ChatBubbleLeftIcon class="h-3 w-3 text-green-600" />
+                      <MessageCircle :size="12" class="text-green-600" />
                     </button>
                   </div>
                 </div>
@@ -136,7 +117,7 @@
                       class="p-1 hover:bg-gray-100 rounded"
                       title="Salin email"
                     >
-                      <DocumentDuplicateIcon class="h-3 w-3 text-gray-400" />
+                      <Copy :size="12" class="text-gray-400" />
                     </button>
                   </div>
                 </div>
@@ -154,7 +135,7 @@
                       class="p-1 hover:bg-gray-100 rounded flex-shrink-0"
                       title="Salin alamat"
                     >
-                      <DocumentDuplicateIcon class="h-3 w-3 text-gray-400" />
+                      <Copy :size="12" class="text-gray-400" />
                     </button>
                   </div>
                 </div>
@@ -166,7 +147,7 @@
               <h5
                 class="text-sm font-semibold text-gray-900 mb-3 flex items-center"
               >
-                <CreditCardIcon class="h-4 w-4 mr-2 text-gray-600" />
+                <CreditCard :size="16" class="mr-2 text-gray-600" />
                 Informasi Kredit
               </h5>
               <div class="grid grid-cols-1 gap-3">
@@ -221,7 +202,7 @@
               <h5
                 class="text-sm font-semibold text-gray-900 mb-3 flex items-center"
               >
-                <CogIcon class="h-4 w-4 mr-2 text-gray-600" />
+                <Settings :size="16" class="mr-2 text-gray-600" />
                 Informasi Sistem
               </h5>
               <div class="grid grid-cols-1 gap-3">
@@ -238,7 +219,7 @@
                       class="p-1 hover:bg-gray-100 rounded"
                       title="Salin ID pelanggan"
                     >
-                      <DocumentDuplicateIcon class="h-3 w-3 text-gray-400" />
+                      <Copy :size="12" class="text-gray-400" />
                     </button>
                   </div>
                 </div>
@@ -249,12 +230,12 @@
                   <span
                     class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
                     :class="
-                      pelanggan.status === 'aktif'
+                      pelanggan.aktif
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-red-100 text-red-800'
                     "
                   >
-                    {{ pelanggan.status === 'aktif' ? "Aktif" : "Nonaktif" }}
+                    {{ pelanggan.aktif ? "Aktif" : "Nonaktif" }}
                   </span>
                 </div>
               </div>
@@ -265,7 +246,7 @@
               <h5
                 class="text-sm font-semibold text-gray-900 mb-3 flex items-center"
               >
-                <ClockIcon class="h-4 w-4 mr-2 text-gray-600" />
+                <Clock :size="16" class="mr-2 text-gray-600" />
                 Informasi Audit
               </h5>
               <div class="grid grid-cols-1 gap-3">
@@ -306,49 +287,38 @@
               "
               class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2"
             >
-              <PencilIcon class="h-4 w-4" />
+              <Edit :size="16" />
               <span>Edit Pelanggan</span>
             </button>
           </div>
         </div>
       </div>
-            </DialogPanel>
-          </TransitionChild>
-        </div>
-      </div>
-    </Dialog>
-  </TransitionRoot>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
 import {
-  TransitionRoot,
-  TransitionChild,
-  Dialog,
-  DialogPanel,
-} from '@headlessui/vue'
-import {
-  XMarkIcon,
-  UserIcon,
-  CogIcon,
-  ClockIcon,
-  DocumentDuplicateIcon,
-  PencilIcon,
-  CreditCardIcon,
-  ChatBubbleLeftIcon,
-} from '@heroicons/vue/24/outline'
+  X,
+  User,
+  Settings,
+  Clock,
+  Copy,
+  Edit,
+  CreditCard,
+  MessageCircle,
+} from "lucide-vue-next";
 
 interface Props {
-  isOpen: boolean
   pelanggan: {
-    id?: string;
+    id: string;
     id_pelanggan: string;
     nama: string;
-    telepon?: string;
+    no_hp?: string;
     email?: string;
     alamat?: string;
-    status?: string;
+    aktif: boolean;
     allow_installment?: boolean;
     credit_limit?: number;
     max_tenor_bulan?: number;
@@ -358,12 +328,12 @@ interface Props {
   };
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  close: []
-  edit: [pelanggan: any]
-}>()
+  close: [];
+  edit: [pelanggan: any];
+}>();
 
 // Methods
 const getCustomerInitials = () => {
@@ -375,7 +345,7 @@ const getCustomerInitials = () => {
   return names.length > 1
     ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
     : names[0].charAt(0).toUpperCase();
-}
+};
 
 const formatDateTime = (dateString: string) => {
   return new Date(dateString).toLocaleString("id-ID", {
@@ -385,7 +355,7 @@ const formatDateTime = (dateString: string) => {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
+};
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -393,25 +363,23 @@ const formatCurrency = (amount: number) => {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(amount);
-}
+};
 
 const getTrustScoreColor = (score: number) => {
   if (score >= 80) return "bg-emerald-500";
   if (score >= 60) return "bg-yellow-500";
   return "bg-red-500";
-}
+};
 
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    const toast = useToast()
-    toast.success("Berhasil disalin ke clipboard");
+    window.$toast?.success("Berhasil disalin ke clipboard");
   } catch (error) {
     console.error("Failed to copy to clipboard:", error);
-    const toast = useToast()
-    toast.error("Gagal menyalin ke clipboard");
+    window.$toast?.error("Gagal menyalin ke clipboard");
   }
-}
+};
 
 const openWhatsApp = (phoneNumber: string) => {
   // Clean phone number and format for WhatsApp
@@ -421,7 +389,7 @@ const openWhatsApp = (phoneNumber: string) => {
     : `62${cleanNumber.substring(1)}`;
   const waUrl = `https://wa.me/${waNumber}`;
   window.open(waUrl, "_blank");
-}
+};
 </script>
 
 <style scoped>
