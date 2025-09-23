@@ -42,12 +42,8 @@
 import { computed, ref, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 
-// Page meta
-definePageMeta({
-  middleware: ["role"],
-  auth: true,
-  requiredRole: "admin",
-});
+// Note: definePageMeta() should not be used in layouts
+// Middleware should be defined in individual pages that use this layout
 
 // Reactive state
 const sidebarCollapsed = ref(false);
