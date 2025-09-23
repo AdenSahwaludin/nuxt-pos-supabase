@@ -309,11 +309,18 @@
         />
       </button>
     </div>
+    <!-- User Info Section -->
+    <SidebarUserInfo
+      :is-collapsed="isCollapsed"
+      :name="authStore.profile?.nama || 'Admin'"
+      role="Admin"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
+import { useAuthStore } from "~/stores/auth";
 import {
   LayoutDashboard,
   Users,
@@ -324,6 +331,8 @@ import {
   BarChart3,
   ChevronLeft,
 } from "lucide-vue-next";
+import SidebarUserInfo from "~/components/SidebarUserInfo.vue";
+const authStore = useAuthStore();
 
 interface Props {
   isCollapsed: boolean;

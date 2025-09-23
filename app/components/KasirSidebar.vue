@@ -240,41 +240,19 @@
       </button>
     </div>
 
-    <!-- User Info Section (Bottom) -->
-    <div
-      class="absolute bottom-0 left-0 right-0 p-4 border-t border-emerald-200/50"
-    >
-      <div v-if="!isCollapsed" class="flex items-center space-x-3">
-        <div
-          class="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full"
-        >
-          <span class="text-sm font-semibold text-emerald-700">
-            {{ userInitials }}
-          </span>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">
-            {{ authStore.profile?.nama || "Kasir" }}
-          </p>
-          <p class="text-xs text-emerald-600 truncate">Role: Kasir</p>
-        </div>
-      </div>
-      <div v-else class="flex justify-center">
-        <div
-          class="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full"
-          :title="authStore.profile?.nama || 'Kasir'"
-        >
-          <span class="text-sm font-semibold text-emerald-700">
-            {{ userInitials }}
-          </span>
-        </div>
-      </div>
-    </div>
+    <!-- User Info Section -->
+    <SidebarUserInfo
+      :is-collapsed="isCollapsed"
+      :name="authStore.profile?.nama || 'Kasir'"
+      role="Kasir"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
+import { useAuthStore } from "~/stores/auth";
+import SidebarUserInfo from "~/components/SidebarUserInfo.vue";
 import {
   LayoutDashboard,
   Calculator,

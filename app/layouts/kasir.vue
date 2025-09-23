@@ -20,7 +20,7 @@
       />
 
       <!-- Page Content -->
-      <main class="">
+      <main class="p-4">
         <slot />
       </main>
     </div>
